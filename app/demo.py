@@ -1,5 +1,5 @@
 """
-Demo mode for Vancouver Route Recommendation System.
+Demo mode for Route Recommendation System.
 Provides sample data and functionality when API keys are not available.
 """
 

@@ -133,7 +133,7 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
           <Settings className="w-4 h-4 mr-2 text-primary-600" />
           Route Preferences
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
           {preferenceOptions.map((option, index) => {
             const Icon = option.icon
             const isSelected = preferences.includes(option.value)
@@ -148,7 +148,7 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className={cn(
-                  "p-4 rounded-xl border-2 transition-all duration-300 relative overflow-hidden",
+                  "p-2 sm:p-3 rounded-xl border-2 transition-all duration-300 relative overflow-hidden min-h-[60px] sm:min-h-[70px] flex flex-col items-center justify-center",
                   isSelected
                     ? 'border-primary-500/50 bg-primary-50/80 text-primary-700 shadow-lg'
                     : 'border-white/40 hover:border-white/60 text-gray-700 hover:bg-white/50'
@@ -156,20 +156,20 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
               >
                 <div className="text-center relative z-10">
                   <div className={cn(
-                    "w-8 h-8 mx-auto mb-2 rounded-lg flex items-center justify-center text-white",
+                    "w-6 h-6 mx-auto mb-1 rounded-lg flex items-center justify-center text-white",
                     `bg-gradient-to-br ${option.color}`
                   )}>
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-3 h-3" />
                   </div>
-                  <div className="text-xs font-medium">{option.label}</div>
+                  <div className="text-xs font-medium leading-tight">{option.label}</div>
                 </div>
                 {isSelected && (
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute top-2 right-2 w-4 h-4 bg-primary-500 rounded-full flex items-center justify-center"
+                    className="absolute top-1 right-1 w-3 h-3 bg-primary-500 rounded-full flex items-center justify-center"
                   >
-                    <div className="w-2 h-2 bg-white rounded-full" />
+                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
                   </motion.div>
                 )}
               </motion.button>

@@ -1,5 +1,5 @@
 """
-Main FastAPI application for the Vancouver Route Recommendation System.
+Main FastAPI application for the Route Recommendation System.
 Provides REST API endpoints for route calculation and user management.
 """
 
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Vancouver Route Recommendation System",
+    title="Route Recommendation System",
     description="AI-powered multi-modal route recommendation system for Vancouver, Canada",
     version="1.0.0"
 )
@@ -51,7 +51,7 @@ async def startup_event():
     """Initialize the application on startup."""
     global graph_builder, routing_engine
 
-    logger.info("Starting Vancouver Route Recommendation System...")
+    logger.info("Starting Route Recommendation System...")
 
     # Validate API keys
     validation_results = validate_api_keys()

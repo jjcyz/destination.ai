@@ -7,25 +7,31 @@ const Dashboard: React.FC = () => {
   const { state: userState } = useUser()
   const [challenges, setChallenges] = useState<any[]>([])
   const [tips, setTips] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Load dashboard data
     const loadDashboardData = async () => {
       try {
+        setIsLoading(true)
+        setError(null)
+
         const [challengesData, tipsData] = await Promise.all([
           gamificationAPI.getDailyChallenges(),
           gamificationAPI.getSustainabilityTips()
         ])
 
         setChallenges(challengesData.challenges || [])
-        setTips(tipsData.tips || [])
+        setTips(tipsData.tips?.map((tip: any) => tip.description || tip.title || tip) || [])
       } catch (error) {
         console.error('Failed to load dashboard data:', error)
+        setError('Failed to load dashboard data')
         // Use mock data for demo
         setChallenges([
           {
             id: 'daily_walk',
-            title: 'Daily Walker',
+            name: 'Daily Walker',
             description: 'Walk at least 2km today',
             reward_points: 30,
             progress: 0,
@@ -33,7 +39,7 @@ const Dashboard: React.FC = () => {
           },
           {
             id: 'eco_commute',
-            title: 'Eco Commute',
+            name: 'Eco Commute',
             description: 'Complete a route without using a car',
             reward_points: 50,
             progress: 0,
@@ -45,6 +51,8 @@ const Dashboard: React.FC = () => {
           'Biking burns calories while saving the planet - it\'s a win-win!',
           'Public transit reduces traffic congestion and your carbon footprint.'
         ])
+      } finally {
+        setIsLoading(false)
       }
     }
 
@@ -53,6 +61,29 @@ const Dashboard: React.FC = () => {
 
   const progressToNextLevel = (userState.profile.total_sustainability_points % 100)
   const pointsNeeded = 100 - progressToNextLevel
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="loading-spinner mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-red-500 text-4xl mb-4">⚠️</div>
+          <p className="text-red-600 font-medium">Error loading dashboard</p>
+          <p className="text-red-500 text-sm mt-2">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -148,7 +179,7 @@ const Dashboard: React.FC = () => {
             {challenges.map((challenge) => (
               <div key={challenge.id} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-medium text-gray-900">{challenge.title}</h4>
+                  <h4 className="font-medium text-gray-900">{challenge.name || challenge.title}</h4>
                   <span className="text-sm text-green-600 font-medium">
                     +{challenge.reward_points} pts
                   </span>

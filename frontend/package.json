@@ -1,7 +1,7 @@
 {
   "name": "vancouver-route-frontend",
   "version": "1.0.0",
-  "description": "Frontend for Vancouver Route Recommendation System",
+  "description": "Frontend for Route Recommendation System",
   "type": "module",
   "main": "index.js",
   "scripts": {

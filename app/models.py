@@ -1,5 +1,5 @@
 """
-Data models for the Vancouver Route Recommendation System.
+Data models for the Route Recommendation System.
 Defines the core data structures for routes, nodes, edges, and user preferences.
 """
 

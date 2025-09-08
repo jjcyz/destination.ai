@@ -63,12 +63,11 @@ const RoutePlanner: React.FC = () => {
         className="text-center mb-8 sm:mb-12"
       >
         <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 mb-4 sm:mb-6">
-          Vancouver Route
-          <span className="bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent"> Planner</span>
+          <span className="bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">Destination AI</span>
         </h1>
         <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed px-4">
-          Find the best routes across Vancouver using multiple transportation modes.
-          Get real-time traffic, weather, and transit information with AI-powered recommendations.
+          AI-powered route planning for Vancouver. Find the best routes using multiple transportation modes.
+          Get real-time traffic, weather, and transit information with intelligent recommendations.
         </p>
       </motion.div>
 
@@ -132,11 +131,11 @@ const RoutePlanner: React.FC = () => {
           <AnimatePresence>
             {showMap && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3 }}
-                className="h-80 sm:h-96 lg:h-[500px] xl:h-[600px] min-h-[320px]"
+                className="h-[500px] sm:h-[600px] lg:h-[800px] xl:h-[900px] min-h-[200px]"
               >
                 <MapView
                   routes={routeState.currentRoutes}

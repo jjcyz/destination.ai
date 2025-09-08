@@ -34,8 +34,8 @@ const Header: React.FC = () => {
               <Leaf className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </motion.div>
             <div className="hidden sm:block">
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900">Vancouver Routes</h1>
-              <p className="text-xs text-gray-600">Sustainable Transportation</p>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">Destination AI</h1>
+              <p className="text-xs text-gray-600">AI-Powered Route Planning</p>
             </div>
           </Link>
 

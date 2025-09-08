@@ -70,7 +70,7 @@ const MapView: React.FC<MapViewProps> = ({ routes, selectedRoute, lastRequest })
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsMapReady(true)
-    }, 100)
+    }, 1000)
     return () => clearTimeout(timer)
   }, [])
 
@@ -105,7 +105,7 @@ const MapView: React.FC<MapViewProps> = ({ routes, selectedRoute, lastRequest })
   // Show loading state
   if (!isMapReady) {
     return (
-      <div style={{ height: '100%', width: '100%', minHeight: '300px' }} className="flex items-center justify-center bg-gray-100 rounded-xl">
+      <div style={{ height: '100%', width: '100%', minHeight: '200px' }} className="flex items-center justify-center bg-gray-100 rounded-xl">
         <div className="text-center">
           <div className="loading-spinner mx-auto mb-4"></div>
           <p className="text-gray-600">Loading map...</p>
@@ -117,7 +117,7 @@ const MapView: React.FC<MapViewProps> = ({ routes, selectedRoute, lastRequest })
   // Show error state
   if (mapError) {
     return (
-      <div style={{ height: '100%', width: '100%', minHeight: '300px' }} className="flex items-center justify-center bg-red-50 rounded-xl">
+      <div style={{ height: '100%', width: '100%', minHeight: '200px' }} className="flex items-center justify-center bg-red-50 rounded-xl">
         <div className="text-center">
           <div className="text-red-500 text-4xl mb-4">🗺️</div>
           <p className="text-red-600 font-medium">Map failed to load</p>
@@ -137,11 +137,11 @@ const MapView: React.FC<MapViewProps> = ({ routes, selectedRoute, lastRequest })
   }
 
   return (
-    <div style={{ height: '100%', width: '100%', minHeight: '300px' }}>
+    <div style={{ height: '100%', width: '100%', minHeight: '200px' }}>
       <MapContainer
         center={vancouverCenter}
         zoom={12}
-        style={{ height: '100%', width: '100%', minHeight: '300px' }}
+        style={{ height: '100%', width: '100%', minHeight: '200px' }}
         ref={mapRef}
         whenReady={() => setIsMapReady(true)}
         zoomControl={true}
