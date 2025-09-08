@@ -20,7 +20,7 @@
 3. **Set up environment variables:**
    ```bash
    cp env.example .env
-   # Edit .env and add your API keys (optional for demo)
+   # Edit .env
    ```
 
 4. **Install frontend dependencies:**
