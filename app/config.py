@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # Application settings
     debug: bool = os.getenv("DEBUG", "True").lower() == "true"
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
-    cors_origins: List[str] = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080").split(",")
+    cors_origins: List[str] = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080,http://10.0.0.225:3000").split(",")
 
     # Gamification settings
     sustainability_points_bike: int = int(os.getenv("SUSTAINABILITY_POINTS_BIKE", "10"))

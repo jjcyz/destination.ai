@@ -131,6 +131,32 @@
   width: 100%;
   border-radius: 1rem;
   overflow: hidden;
+  background-color: #f8fafc;
+}
+
+/* Mobile map optimizations */
+@media (max-width: 768px) {
+  .leaflet-container {
+    border-radius: 0.75rem;
+  }
+
+  /* Ensure map tiles load properly on mobile */
+  .leaflet-tile {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  /* Better touch handling */
+  .leaflet-control-zoom {
+    margin: 10px !important;
+  }
+
+  .leaflet-control-zoom a {
+    width: 40px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+    font-size: 18px !important;
+  }
 }
 
 /* Route line styles */

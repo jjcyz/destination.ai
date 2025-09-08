@@ -136,7 +136,7 @@ const RoutePlanner: React.FC = () => {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3 }}
-                className="h-80 sm:h-96 lg:h-[500px] xl:h-[600px]"
+                className="h-80 sm:h-96 lg:h-[500px] xl:h-[600px] min-h-[320px]"
               >
                 <MapView
                   routes={routeState.currentRoutes}

@@ -104,7 +104,7 @@ const Gamification: React.FC = () => {
       {/* Page Header */}
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Gamification Center
+          My Profile
         </h1>
         <p className="text-gray-600">
           Track your achievements, earn badges, and compete with others
