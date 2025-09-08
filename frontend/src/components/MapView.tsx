@@ -96,7 +96,7 @@ const MapView: React.FC<MapViewProps> = ({ routes, selectedRoute, lastRequest })
       // Use setTimeout to ensure map is fully rendered
       setTimeout(() => {
         if (mapRef.current) {
-          mapRef.current.fitBounds(bounds, { padding: [20, 20] })
+      mapRef.current.fitBounds(bounds, { padding: [20, 20] })
         }
       }, 100)
     }
@@ -237,43 +237,43 @@ const MapView: React.FC<MapViewProps> = ({ routes, selectedRoute, lastRequest })
 
       {/* Enhanced Legend - Only show if there are routes */}
       {routes.length > 0 && (
-        <div className="absolute top-4 right-4 glass-card-strong p-4 z-[1000] max-w-xs">
-          <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
-            <div className="w-2 h-2 bg-primary-500 rounded-full mr-2" />
-            Route Types
-          </h3>
-          <div className="space-y-2">
-            {routes.map((route) => (
-              <div key={route.id} className="flex items-center space-x-3">
-                <div
-                  className="w-5 h-1.5 rounded-full"
-                  style={{ backgroundColor: getRouteColor(route.preference) }}
-                />
-                <span className="text-sm text-gray-700 capitalize flex-1">
-                  {route.preference.replace('_', ' ')}
+      <div className="absolute top-4 right-4 glass-card-strong p-4 z-[1000] max-w-xs">
+        <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+          <div className="w-2 h-2 bg-primary-500 rounded-full mr-2" />
+          Route Types
+        </h3>
+        <div className="space-y-2">
+          {routes.map((route) => (
+            <div key={route.id} className="flex items-center space-x-3">
+              <div
+                className="w-5 h-1.5 rounded-full"
+                style={{ backgroundColor: getRouteColor(route.preference) }}
+              />
+              <span className="text-sm text-gray-700 capitalize flex-1">
+                {route.preference.replace('_', ' ')}
+              </span>
+              {selectedRoute?.id === route.id && (
+                <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">
+                  Selected
                 </span>
-                {selectedRoute?.id === route.id && (
-                  <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">
-                    Selected
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          ))}
+        </div>
 
-          <div className="mt-4 pt-3 border-t border-white/30">
-            <div className="text-xs text-gray-500 space-y-1">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-0.5 bg-gray-400 rounded" style={{ borderStyle: 'dashed' }} />
-                <span>Walking</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-0.5 bg-gray-400 rounded" />
-                <span>Other modes</span>
-              </div>
+        <div className="mt-4 pt-3 border-t border-white/30">
+          <div className="text-xs text-gray-500 space-y-1">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-0.5 bg-gray-400 rounded" style={{ borderStyle: 'dashed' }} />
+              <span>Walking</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-0.5 bg-gray-400 rounded" />
+              <span>Other modes</span>
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {/* No routes message */}
