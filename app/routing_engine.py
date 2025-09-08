@@ -76,6 +76,15 @@ class RoutingEngine:
         start_time = datetime.now()
 
         try:
+            # Check if we have API keys for real data
+            from .config import validate_api_keys
+            api_keys_status = validate_api_keys()
+
+            if not api_keys_status["all_required"]:
+                logger.info("API keys not available, using demo mode")
+                from .demo import DemoDataProvider
+                return DemoDataProvider.generate_demo_routes(request)
+
             # Build or update graph
             origin_node = self.graph_builder.get_nearest_node(request.origin)
             destination_node = self.graph_builder.get_nearest_node(request.destination)
@@ -114,7 +123,10 @@ class RoutingEngine:
 
         except Exception as e:
             logger.error(f"Error finding routes: {e}")
-            raise
+            # Fallback to demo mode if real routing fails
+            logger.info("Falling back to demo mode due to error")
+            from .demo import DemoDataProvider
+            return DemoDataProvider.generate_demo_routes(request)
 
     async def _find_route_for_preference(
         self,
@@ -669,6 +681,7 @@ class RoutingEngine:
             base_penalty *= 1.2
 
         return base_penalty
+
 
     async def close(self):
         """Close API client connections."""

@@ -64,11 +64,22 @@ def validate_api_keys() -> dict:
     Validate that required API keys are present.
     Returns a dictionary with validation results.
     """
+    # Check if keys are present and not placeholder values
+    def is_valid_key(key_value: str) -> bool:
+        if not key_value:
+            return False
+        # Check for common placeholder patterns
+        placeholder_patterns = [
+            "your_", "placeholder", "example", "demo", "test", "api_key_here"
+        ]
+        key_lower = key_value.lower()
+        return not any(pattern in key_lower for pattern in placeholder_patterns)
+
     validation_results = {
-        "google_maps": bool(settings.google_maps_api_key),
-        "translink": bool(settings.translink_api_key),
-        "lime": bool(settings.lime_api_key),
-        "openweather": bool(settings.openweather_api_key),
+        "google_maps": is_valid_key(settings.google_maps_api_key),
+        "translink": is_valid_key(settings.translink_api_key),
+        "lime": is_valid_key(settings.lime_api_key),
+        "openweather": is_valid_key(settings.openweather_api_key),
         "all_required": True
     }
 

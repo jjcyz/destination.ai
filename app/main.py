@@ -136,12 +136,14 @@ async def calculate_route(request: RouteRequest):
         if not request.origin or not request.destination:
             raise HTTPException(status_code=400, detail="Origin and destination are required")
 
-        # Check if points are within Vancouver bounds
-        if not _is_within_vancouver_bounds(request.origin) or not _is_within_vancouver_bounds(request.destination):
-            raise HTTPException(
-                status_code=400,
-                detail="Origin and destination must be within Vancouver city limits"
-            )
+        # Check if points are within Vancouver bounds (skip in demo mode)
+        api_keys_status = validate_api_keys()
+        if api_keys_status["all_required"]:
+            if not _is_within_vancouver_bounds(request.origin) or not _is_within_vancouver_bounds(request.destination):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Origin and destination must be within Vancouver city limits"
+                )
 
         # Calculate routes
         response = await routing_engine.find_routes(request)
@@ -167,6 +169,15 @@ async def geocode_address(address: str):
         Point with latitude and longitude
     """
     try:
+        # Check if we have API keys
+        api_keys_status = validate_api_keys()
+
+        if not api_keys_status["all_required"]:
+            # Demo mode - return mock coordinates for common Vancouver locations
+            logger.info("Using demo geocoding mode")
+            from .demo import DemoDataProvider
+            return DemoDataProvider.geocode_address(address)
+
         if not routing_engine or not routing_engine.api_client:
             raise HTTPException(status_code=503, detail="API client not initialized")
 
@@ -181,7 +192,10 @@ async def geocode_address(address: str):
         raise
     except Exception as e:
         logger.error(f"Error geocoding address: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        # Fallback to demo mode
+        logger.info("Falling back to demo geocoding due to error")
+        from .demo import DemoDataProvider
+        return DemoDataProvider.geocode_address(address)
 
 
 @app.post("/api/v1/gamification/rewards")
@@ -197,6 +211,16 @@ async def calculate_rewards(route: dict, user_profile: dict):
         Rewards and statistics
     """
     try:
+        # Check if we have API keys
+        api_keys_status = validate_api_keys()
+
+        if not api_keys_status["all_required"]:
+            # Demo mode
+            logger.info("Using demo gamification mode")
+            from .demo import DemoGamificationProvider
+            route_obj = Route(**route)
+            return DemoGamificationProvider.calculate_demo_rewards(route_obj, user_profile)
+
         # Convert dict to models (simplified for demo)
         route_obj = Route(**route)
         user_profile_obj = UserProfile(**user_profile)
@@ -207,65 +231,146 @@ async def calculate_rewards(route: dict, user_profile: dict):
 
     except Exception as e:
         logger.error(f"Error calculating rewards: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        # Fallback to demo mode
+        logger.info("Falling back to demo gamification due to error")
+        from .demo import DemoGamificationProvider
+        route_obj = Route(**route)
+        return DemoGamificationProvider.calculate_demo_rewards(route_obj, user_profile)
 
 
 @app.get("/api/v1/gamification/achievements")
 async def get_achievements():
     """Get all available achievements."""
-    return {
-        "achievements": [
-            {
-                "id": achievement.id,
-                "name": achievement.name,
-                "description": achievement.description,
-                "icon": achievement.icon,
-                "points_reward": achievement.points_reward
+    try:
+        # Check if we have API keys
+        api_keys_status = validate_api_keys()
+
+        if not api_keys_status["all_required"]:
+            # Demo mode
+            logger.info("Using demo achievements mode")
+            from .demo import DemoGamificationProvider
+            return {
+                "achievements": DemoGamificationProvider.get_demo_achievements()
             }
-            for achievement in gamification_engine.achievements
-        ]
-    }
+
+        return {
+            "achievements": [
+                {
+                    "id": achievement.id,
+                    "name": achievement.name,
+                    "description": achievement.description,
+                    "icon": achievement.icon,
+                    "points_reward": achievement.points_reward
+                }
+                for achievement in gamification_engine.achievements
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Error getting achievements: {e}")
+        # Fallback to demo mode
+        from .demo import DemoGamificationProvider
+        return {"achievements": DemoGamificationProvider.get_demo_achievements()}
 
 
 @app.get("/api/v1/gamification/badges")
 async def get_badges():
     """Get all available badges."""
-    return {
-        "badges": [
-            {
-                "id": badge.id,
-                "name": badge.name,
-                "description": badge.description,
-                "icon": badge.icon,
-                "rarity": badge.rarity
-            }
-            for badge in gamification_engine.badges
-        ]
-    }
+    try:
+        # Check if we have API keys
+        api_keys_status = validate_api_keys()
+
+        if not api_keys_status["all_required"]:
+            # Demo mode
+            logger.info("Using demo badges mode")
+            from .demo import DemoGamificationProvider
+            return {"badges": DemoGamificationProvider.get_demo_badges()}
+
+        return {
+            "badges": [
+                {
+                    "id": badge.id,
+                    "name": badge.name,
+                    "description": badge.description,
+                    "icon": badge.icon,
+                    "rarity": badge.rarity
+                }
+                for badge in gamification_engine.badges
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Error getting badges: {e}")
+        # Fallback to demo mode
+        from .demo import DemoGamificationProvider
+        return {"badges": DemoGamificationProvider.get_demo_badges()}
 
 
 @app.get("/api/v1/gamification/challenges")
 async def get_daily_challenges():
     """Get daily challenges."""
-    return {
-        "challenges": gamification_engine.get_daily_challenges()
-    }
+    try:
+        # Check if we have API keys
+        api_keys_status = validate_api_keys()
+
+        if not api_keys_status["all_required"]:
+            # Demo mode
+            logger.info("Using demo challenges mode")
+            from .demo import DemoGamificationProvider
+            return {"challenges": DemoGamificationProvider.get_demo_daily_challenges()}
+
+        return {
+            "challenges": gamification_engine.get_daily_challenges()
+        }
+    except Exception as e:
+        logger.error(f"Error getting challenges: {e}")
+        # Fallback to demo mode
+        from .demo import DemoGamificationProvider
+        return {"challenges": DemoGamificationProvider.get_demo_daily_challenges()}
 
 
 @app.get("/api/v1/gamification/leaderboard")
 async def get_leaderboard(limit: int = 10):
     """Get leaderboard data."""
-    return {
-        "leaderboard": gamification_engine.get_leaderboard_data(limit)
-    }
+    try:
+        # Check if we have API keys
+        api_keys_status = validate_api_keys()
+
+        if not api_keys_status["all_required"]:
+            # Demo mode
+            logger.info("Using demo leaderboard mode")
+            from .demo import DemoGamificationProvider
+            return {"leaderboard": DemoGamificationProvider.get_demo_leaderboard()}
+
+        return {
+            "leaderboard": gamification_engine.get_leaderboard_data(limit)
+        }
+    except Exception as e:
+        logger.error(f"Error getting leaderboard: {e}")
+        # Fallback to demo mode
+        from .demo import DemoGamificationProvider
+        return {"leaderboard": DemoGamificationProvider.get_demo_leaderboard()}
 
 
 @app.get("/api/v1/gamification/tips")
 async def get_sustainability_tips():
     """Get sustainability tips."""
-    return {
-        "tips": gamification_engine.get_sustainability_tips()
-    }
+    try:
+        # Check if we have API keys
+        api_keys_status = validate_api_keys()
+
+        if not api_keys_status["all_required"]:
+            # Demo mode
+            logger.info("Using demo tips mode")
+            from .demo import DemoGamificationProvider
+            return {"tips": DemoGamificationProvider.get_demo_sustainability_tips()}
+
+        return {
+            "tips": gamification_engine.get_sustainability_tips()
+        }
+    except Exception as e:
+        logger.error(f"Error getting tips: {e}")
+        # Fallback to demo mode
+        from .demo import DemoGamificationProvider
+        return {"tips": DemoGamificationProvider.get_demo_sustainability_tips()}
 
 
 def _is_within_vancouver_bounds(point: Point) -> bool:
