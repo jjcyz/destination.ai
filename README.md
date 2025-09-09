@@ -1,4 +1,4 @@
-# Vancouver Route Recommendation System
+# Destination AI
 
 An AI-powered multi-modal route recommendation system for Vancouver, Canada that provides sustainable transportation options with real-time data integration and gamification features.
 
