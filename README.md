@@ -1,5 +1,7 @@
 # Destination AI
 
+Preview: https://destination-ai.vercel.app/ [API KEYS REQUIRED]
+
 An AI-powered multi-modal route recommendation system for Vancouver, Canada that provides sustainable transportation options with real-time data integration and gamification features.
 
 ## Quick Start
@@ -35,7 +37,7 @@ Frontend:
 - **CLI Interface**: Command-line tool for testing and development
 
 
-## 🔑 API Setup
+## API Setup
 
 ### Required API Keys
 
@@ -101,7 +103,7 @@ SUSTAINABILITY_POINTS_TRANSIT=8
 SUSTAINABILITY_POINTS_CAR=0
 ```
 
-## 🖥️ Usage
+## Usage
 
 ### Web Interface
 
@@ -146,7 +148,7 @@ curl "http://localhost:8000/api/v1/gamification/achievements"
 curl "http://localhost:8000/api/v1/gamification/leaderboard"
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 ### Backend Components
 
@@ -174,7 +176,7 @@ curl "http://localhost:8000/api/v1/gamification/leaderboard"
 5. **Gamification**: Calculate rewards and update user stats
 6. **Response**: JSON with routes, alternatives, and metadata
 
-## 🎮 Gamification System
+## Gamification System
 
 ### Sustainability Points
 - **Walking**: 15 points/km
@@ -196,23 +198,6 @@ curl "http://localhost:8000/api/v1/gamification/leaderboard"
 - **Explorer** (Epic): Use 3 or more transport modes in a single route
 - **Carbon Crusher** (Legendary): Save 10kg of CO2 emissions
 
-## 🧪 Testing
-
-### Backend Testing
-```bash
-# Run tests
-pytest
-
-# Run with coverage
-pytest --cov=app
-```
-
-### Frontend Testing
-```bash
-cd frontend
-npm test
-```
-
 ### CLI Testing
 ```bash
 # Test route calculation
@@ -220,47 +205,6 @@ python cli.py --origin "vancouver downtown" --destination "ubc" --preferences fa
 
 # Test interactive mode
 python cli.py --interactive
-```
-
-## 📊 Performance
-
-### Optimization Features
-- **Caching**: Graph data and API responses
-- **Parallel Processing**: Concurrent API calls
-- **Efficient Algorithms**: A* with optimized heuristics
-- **Real-time Updates**: Dynamic edge cost adjustments
-
-### Scalability
-- **Modular Design**: Easy to add new transport modes
-- **API-First**: RESTful architecture
-- **Database Ready**: SQLAlchemy integration
-- **Cloud Deployable**: Docker and cloud platform support
-
-## 🛠️ Development
-
-### Project Structure
-```
-destination.ai/
-├── app/                    # Backend application
-│   ├── __init__.py
-│   ├── main.py            # FastAPI app
-│   ├── models.py          # Data models
-│   ├── config.py          # Configuration
-│   ├── api_clients.py     # External API clients
-│   ├── graph_builder.py   # Graph construction
-│   ├── routing_engine.py  # A* routing algorithm
-│   └── gamification.py    # Gamification system
-├── frontend/              # React frontend
-│   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── contexts/      # State management
-│   │   ├── services/      # API services
-│   │   └── ...
-│   └── package.json
-├── cli.py                 # Command-line interface
-├── requirements.txt       # Python dependencies
-├── env.example           # Environment variables template
-└── README.md
 ```
 
 ### Adding New Features
@@ -280,48 +224,5 @@ destination.ai/
    - Add to `gamification.py`
    - Update API endpoints in `main.py`
    - Add frontend components
-
-## 🚀 Deployment
-
-### Docker Deployment
-```bash
-# Build and run with Docker Compose
-docker-compose up --build
-```
-
-### Cloud Deployment
-- **Backend**: Deploy to AWS/GCP/Azure with FastAPI
-- **Frontend**: Deploy to Vercel/Netlify
-- **Database**: Use managed database service
-- **API Keys**: Store in environment variables or secret management
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- **Vancouver Open Data**: Road closures and construction data
-- **TransLink**: Public transit information
-- **Google Maps**: Traffic and mapping data
-- **OpenWeatherMap**: Weather information
-- **Lime**: Bike and scooter sharing data
-
-## 📞 Support
-
-For questions, issues, or contributions:
-- Create an issue on GitHub
-- Contact the development team
-- Check the documentation
-
----
 
 **Built with ❤️ for sustainable transportation in Vancouver**
