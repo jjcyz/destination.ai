@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers deploying the Vancouver Route Recommendation System to various platforms.
+This guide covers deploying the Route Recommendation System to various platforms.
 
 ## 🐳 Docker Deployment
 

@@ -213,3 +213,7 @@ temp/
 
 # Local development
 .local
+
+# Vercel
+vercel.json
+.vercelignore
