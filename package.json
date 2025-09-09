@@ -2,8 +2,5 @@
   "name": "destination-ai",
   "version": "1.0.0",
   "description": "AI-powered destination routing system",
-  "private": true,
-  "scripts": {
-    "build": "cd frontend && npm run build"
-  }
+  "private": true
 }
