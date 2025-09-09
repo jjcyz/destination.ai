@@ -221,6 +221,14 @@ class UserProfile(BaseModel):
     budget_preferences: Dict[str, float] = Field(default_factory=dict)
     time_preferences: Dict[str, int] = Field(default_factory=dict)  # max time per mode
 
+    # Gamification attributes
+    level: int = Field(default=1)
+    total_sustainability_points: int = Field(default=0)
+    total_distance_saved: float = Field(default=0.0)  # CO2 saved in kg
+    streak_days: int = Field(default=0)
+    achievements: List[str] = Field(default_factory=list)
+    badges: List[str] = Field(default_factory=list)
+
 
 class GamificationStats(BaseModel):
     """User gamification statistics."""

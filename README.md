@@ -2,7 +2,24 @@
 
 An AI-powered multi-modal route recommendation system for Vancouver, Canada that provides sustainable transportation options with real-time data integration and gamification features.
 
-## 🌟 Features
+## Quick Start
+
+```bash
+Backend:
+   source venv/bin/activate
+   python3 -m app.main
+
+Frontend:
+   cd frontend
+   npm run dev
+```
+
+**Access the application**
+   - Web Interface: http://localhost:3000
+   - API Documentation: http://localhost:8000/docs
+   - API Health Check: http://localhost:8000/health
+
+## Features
 
 - **Multi-Modal Routing**: Supports walking, biking, scooters, cars, buses, SkyTrain, SeaBus, and West Coast Express
 - **Real-Time Data Integration**:
@@ -17,55 +34,6 @@ An AI-powered multi-modal route recommendation system for Vancouver, Canada that
 - **Interactive Web Interface**: Modern React frontend with map visualization
 - **CLI Interface**: Command-line tool for testing and development
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.8+
-- Node.js 16+
-- API keys for external services (see [API Setup](#api-setup))
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd destination.ai
-   ```
-
-2. **Install Python dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Install frontend dependencies**
-   ```bash
-   cd frontend
-   npm install
-   cd ..
-   ```
-
-4. **Set up environment variables**
-   ```bash
-   cp env.example .env
-   # Edit .env with your API keys
-   ```
-
-5. **Start the backend server**
-   ```bash
-   python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-6. **Start the frontend development server**
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-
-7. **Access the application**
-   - Web Interface: http://localhost:3000
-   - API Documentation: http://localhost:8000/docs
-   - API Health Check: http://localhost:8000/health
 
 ## 🔑 API Setup
 

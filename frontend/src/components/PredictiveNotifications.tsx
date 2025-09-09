@@ -6,7 +6,7 @@ import {
   Info,
   CheckCircle,
   X,
-  Clock,
+  ChevronDown,
   MapPin,
   Zap,
   Leaf,
@@ -172,9 +172,12 @@ const PredictiveNotifications: React.FC<PredictiveNotificationsProps> = ({
       {/* Header */}
       <motion.button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full glass-card p-4 flex items-center justify-between hover:bg-white/60 transition-all duration-300"
+        className="w-full glass-card p-4 flex items-center justify-between hover:bg-white/60 transition-all duration-300 cursor-pointer group"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
+        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} smart alerts`}
+        aria-expanded={isExpanded}
+        role="button"
       >
         <div className="flex items-center space-x-3">
           <div className="relative">
@@ -205,8 +208,9 @@ const PredictiveNotifications: React.FC<PredictiveNotificationsProps> = ({
         <motion.div
           animate={{ rotate: isExpanded ? 180 : 0 }}
           transition={{ duration: 0.2 }}
+          className="flex items-center justify-center"
         >
-          <Clock className="w-5 h-5 text-gray-400" />
+          <ChevronDown className="w-5 h-5 text-gray-500 group-hover:text-gray-700 transition-colors duration-200" />
         </motion.div>
       </motion.button>
 
