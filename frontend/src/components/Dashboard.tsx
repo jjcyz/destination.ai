@@ -25,9 +25,8 @@ const Dashboard: React.FC = () => {
         setChallenges(challengesData.challenges || [])
         setTips(tipsData.tips?.map((tip: any) => tip.description || tip.title || tip) || [])
       } catch (error) {
-        console.error('Failed to load dashboard data:', error)
-        setError('Failed to load dashboard data')
-        // Use mock data for demo
+        console.log('Backend not available, using demo data:', error.message)
+        // Use mock data for demo when backend is not available
         setChallenges([
           {
             id: 'daily_walk',
@@ -44,12 +43,22 @@ const Dashboard: React.FC = () => {
             reward_points: 50,
             progress: 0,
             target: 1
+          },
+          {
+            id: 'public_transit',
+            name: 'Public Transit Pro',
+            description: 'Use public transportation for your commute',
+            reward_points: 40,
+            progress: 0,
+            target: 1
           }
         ])
         setTips([
           'Walking is the most sustainable mode of transportation with zero emissions!',
           'Biking burns calories while saving the planet - it\'s a win-win!',
-          'Public transit reduces traffic congestion and your carbon footprint.'
+          'Public transit reduces traffic congestion and your carbon footprint.',
+          'Carpooling with colleagues can cut your emissions in half!',
+          'Planning your route in advance helps avoid traffic and saves fuel.'
         ])
       } finally {
         setIsLoading(false)
@@ -73,17 +82,6 @@ const Dashboard: React.FC = () => {
     )
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="text-red-500 text-4xl mb-4">⚠️</div>
-          <p className="text-red-600 font-medium">Error loading dashboard</p>
-          <p className="text-red-500 text-sm mt-2">{error}</p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">
