@@ -32,7 +32,7 @@ function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="relative z-10 pt-35 sm:pt-40"
+              className="relative z-10 pt-32 sm:pt-36"
             >
               <Routes>
                 <Route path="/" element={<RoutePlanner />} />
