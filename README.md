@@ -46,14 +46,14 @@ Frontend:
 - **Setup**:
   1. Go to [Google Cloud Console](https://console.cloud.google.com/)
   2. Create a new project or select existing
-  3. Enable the following APIs:
-     - Maps JavaScript API
-     - Directions API
-     - Distance Matrix API
-     - Elevation API
-     - Roads API
+  3. Enable the following APIs (only these 3 are actually used):
+     - **Directions API** ⭐ (for route calculation and traffic data)
+     - **Geocoding API** ⭐ (for address to coordinates conversion)
+     - **Elevation API** ⭐ (for elevation/slope data)
   4. Create credentials (API Key)
   5. Set `GOOGLE_MAPS_API_KEY` in your `.env` file
+
+  **Note:** See `GOOGLE_MAPS_API_SETUP.md` for detailed setup instructions.
 
 #### 2. OpenWeatherMap API
 - **Purpose**: Weather conditions for route optimization

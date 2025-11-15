@@ -5,6 +5,7 @@ Handles multi-modal routing with real-time data integration.
 
 import heapq
 import math
+import re
 from typing import List, Dict, Set, Tuple, Optional, Callable
 from datetime import datetime, timedelta
 import logging
@@ -65,7 +66,7 @@ class RoutingEngine:
 
     async def find_routes(self, request: RouteRequest) -> RouteResponse:
         """
-        Find optimal routes based on the request.
+        Find optimal routes using Google Maps Directions API directly.
 
         Args:
             request: Route request with preferences and constraints
@@ -85,38 +86,120 @@ class RoutingEngine:
                 from .demo import DemoDataProvider
                 return DemoDataProvider.generate_demo_routes(request)
 
-            # Build or update graph
-            origin_node = self.graph_builder.get_nearest_node(request.origin)
-            destination_node = self.graph_builder.get_nearest_node(request.destination)
-
-            if not origin_node or not destination_node:
-                raise ValueError("Could not find suitable origin or destination nodes")
-
-            # Get real-time data
+            # Get real-time data (weather, transit, etc.) for enhancement
             real_time_data = await self.api_client.get_all_data(request.origin, request.destination)
 
-            # Update graph with real-time data
-            await self._update_graph_with_real_time_data(real_time_data)
-
-            # Find routes for each preference
+            # Get routes from Google Maps for each transport mode and preference
             routes = []
-            for preference in request.preferences:
-                route = await self._find_route_for_preference(
-                    request, origin_node, destination_node, preference, real_time_data
-                )
-                if route:
-                    routes.append(route)
+            alternatives = []
 
-            # Find alternative routes
-            alternatives = await self._find_alternative_routes(
-                request, origin_node, destination_node, routes, real_time_data
-            )
+            # Map our transport modes to Google Maps modes
+            mode_mapping = {
+                TransportMode.WALKING: "walking",
+                TransportMode.BIKING: "bicycling",
+                TransportMode.CAR: "driving",
+                TransportMode.BUS: "transit",
+                TransportMode.SKYTRAIN: "transit",
+                TransportMode.SCOOTER: "walking",  # Approximate with walking
+            }
+
+            # Group transit modes together (they use the same Google Maps mode)
+            transit_modes = {TransportMode.BUS, TransportMode.SKYTRAIN}
+            processed_modes = set()
+
+            # Get routes for each requested transport mode
+            for transport_mode in request.transport_modes:
+                # Skip if we already processed transit modes
+                if transport_mode in transit_modes and "transit" in processed_modes:
+                    continue
+
+                google_mode = mode_mapping.get(transport_mode, "driving")
+                processed_modes.add(google_mode)
+
+                # Build avoid list based on preferences
+                avoid_list = []
+                if request.avoid_highways:
+                    avoid_list.append("highways")
+
+                # Get directions from Google Maps
+                directions_data = await self.api_client.google_maps.get_directions(
+                    origin=request.origin,
+                    destination=request.destination,
+                    mode=google_mode,
+                    alternatives=True,
+                    avoid=avoid_list if avoid_list else None,
+                    departure_time="now" if request.departure_time else None
+                )
+
+                if not directions_data or not directions_data.get("routes"):
+                    logger.warning(f"No routes found for mode {google_mode}")
+                    continue
+
+                # Process each route from Google Maps
+                for route_idx, google_route in enumerate(directions_data.get("routes", [])):
+                    # Determine actual transport mode from route data
+                    actual_mode = transport_mode
+                    if google_mode == "transit":
+                        # Check if route uses bus or train
+                        for leg in google_route.get("legs", []):
+                            for step in leg.get("steps", []):
+                                transit_details = step.get("transit_details")
+                                if transit_details:
+                                    vehicle_type = transit_details.get("line", {}).get("vehicle", {}).get("type", "")
+                                    if vehicle_type == "SUBWAY" or "train" in vehicle_type.lower():
+                                        actual_mode = TransportMode.SKYTRAIN
+                                    else:
+                                        actual_mode = TransportMode.BUS
+                                    break
+                            if actual_mode != transport_mode:
+                                break
+
+                    # Convert Google Maps route to our Route model
+                    route = await self._convert_google_route_to_route(
+                        google_route,
+                        request,
+                        actual_mode,
+                        real_time_data
+                    )
+
+                    if route:
+                        # Apply preference-based scoring
+                        route = self._apply_preference_scoring(route, request.preferences)
+
+                        if route_idx == 0:
+                            routes.append(route)
+                        else:
+                            alternatives.append(route)
+
+            # If no routes found, try with default mode
+            if not routes:
+                logger.warning("No routes found with requested modes, trying default")
+                directions_data = await self.api_client.google_maps.get_directions(
+                    origin=request.origin,
+                    destination=request.destination,
+                    mode="driving",
+                    alternatives=True
+                )
+
+                if directions_data and directions_data.get("routes"):
+                    route = await self._convert_google_route_to_route(
+                        directions_data["routes"][0],
+                        request,
+                        TransportMode.CAR,
+                        real_time_data
+                    )
+                    if route:
+                        route = self._apply_preference_scoring(route, request.preferences)
+                        routes.append(route)
+
+            # Sort routes by preference priority
+            routes = self._sort_routes_by_preferences(routes, request.preferences)
 
             processing_time = (datetime.now() - start_time).total_seconds()
 
             return RouteResponse(
-                routes=routes,
-                alternatives=alternatives,
+                routes=routes[:3],  # Limit to top 3 routes
+                alternatives=alternatives[:3],  # Limit to top 3 alternatives
                 processing_time=processing_time,
                 data_sources=["Google Maps", "TransLink", "Lime", "OpenWeatherMap", "Vancouver Open Data"]
             )
@@ -682,6 +765,182 @@ class RoutingEngine:
 
         return base_penalty
 
+
+    async def _convert_google_route_to_route(
+        self,
+        google_route: Dict[str, any],
+        request: RouteRequest,
+        transport_mode: TransportMode,
+        real_time_data: Dict
+    ) -> Optional[Route]:
+        """Convert Google Maps route data to our Route model."""
+        try:
+            steps = []
+            total_distance = 0
+            total_time = 0
+            total_sustainability_points = 0
+
+            # Process each leg in the route
+            for leg in google_route.get("legs", []):
+                leg_distance = leg.get("distance", {}).get("value", 0)  # meters
+                leg_duration = leg.get("duration", {}).get("value", 0)  # seconds
+                leg_duration_in_traffic = leg.get("duration_in_traffic", {}).get("value", leg_duration)
+
+                # Process each step in the leg
+                for step_idx, step in enumerate(leg.get("steps", [])):
+                    step_distance = step.get("distance", {}).get("value", 0)
+                    step_duration = step.get("duration", {}).get("value", 0)
+
+                    start_location = step.get("start_location", {})
+                    end_location = step.get("end_location", {})
+
+                    start_point = Point(
+                        lat=start_location.get("lat", request.origin.lat),
+                        lng=start_location.get("lng", request.origin.lng)
+                    )
+                    end_point = Point(
+                        lat=end_location.get("lat", request.destination.lat),
+                        lng=end_location.get("lng", request.destination.lng)
+                    )
+
+                    # Get step instructions
+                    instructions = step.get("html_instructions", "")
+                    # Remove HTML tags
+                    instructions = re.sub('<[^<]+?>', '', instructions)
+
+                    # Calculate sustainability points
+                    sustainability_points = self._calculate_sustainability_points(transport_mode, step_distance)
+
+                    # Determine effort level based on distance and mode
+                    effort_level = "moderate"
+                    if transport_mode == TransportMode.WALKING:
+                        if step_distance > 1000:
+                            effort_level = "high"
+                        elif step_distance < 200:
+                            effort_level = "low"
+                    elif transport_mode == TransportMode.BIKING:
+                        if step_distance > 5000:
+                            effort_level = "high"
+                        elif step_distance < 500:
+                            effort_level = "low"
+
+                    # Get elevation data if available (skip for performance - can be enabled if needed)
+                    slope = None
+                    # Note: Elevation API calls are slow, skipping for better performance
+                    # Uncomment below if elevation data is critical:
+                    # if start_location and end_location:
+                    #     elevations = await self.api_client.google_maps.get_elevation([start_point, end_point])
+                    #     if len(elevations) == 2 and elevations[0] and elevations[1]:
+                    #         elevation_diff = elevations[1] - elevations[0]
+                    #         slope = (elevation_diff / step_distance * 100) if step_distance > 0 else 0
+                    #         if slope > 5:
+                    #             effort_level = "high"
+                    #         elif slope < -2:
+                    #             effort_level = "low"
+
+                    # Check for transit details
+                    transit_details = None
+                    if transport_mode in [TransportMode.BUS, TransportMode.SKYTRAIN]:
+                        transit_step = step.get("transit_details")
+                        if transit_step:
+                            transit_details = {
+                                "line": transit_step.get("line", {}).get("name", ""),
+                                "vehicle": transit_step.get("line", {}).get("vehicle", {}).get("name", ""),
+                                "departure_stop": transit_step.get("departure_stop", {}).get("name", ""),
+                                "arrival_stop": transit_step.get("arrival_stop", {}).get("name", ""),
+                            }
+
+                    route_step = RouteStep(
+                        mode=transport_mode,
+                        distance=step_distance,
+                        estimated_time=step_duration,
+                        slope=slope,
+                        effort_level=effort_level,
+                        instructions=instructions or f"Continue {step_distance/1000:.1f}km",
+                        start_point=start_point,
+                        end_point=end_point,
+                        transit_details=transit_details,
+                        sustainability_points=sustainability_points
+                    )
+
+                    steps.append(route_step)
+                    total_distance += step_distance
+                    total_time += step_duration
+                    total_sustainability_points += sustainability_points
+
+            if not steps:
+                return None
+
+            # Calculate route quality metrics
+            safety_score = self._calculate_route_safety_score(steps)
+            energy_efficiency = self._calculate_energy_efficiency(steps)
+            scenic_score = self._calculate_scenic_score(steps)
+
+            # Use first preference for the route
+            preference = request.preferences[0] if request.preferences else RoutePreference.FASTEST
+
+            route = Route(
+                origin=request.origin,
+                destination=request.destination,
+                steps=steps,
+                total_distance=total_distance,
+                total_time=total_time,
+                total_sustainability_points=total_sustainability_points,
+                preference=preference,
+                safety_score=safety_score,
+                energy_efficiency=energy_efficiency,
+                scenic_score=scenic_score
+            )
+
+            return route
+
+        except Exception as e:
+            logger.error(f"Error converting Google route: {e}")
+            return None
+
+    def _apply_preference_scoring(self, route: Route, preferences: List[RoutePreference]) -> Route:
+        """Apply preference-based scoring to enhance route metrics."""
+        if not preferences:
+            return route
+
+        # Adjust scores based on preferences
+        for preference in preferences:
+            if preference == RoutePreference.SAFEST:
+                route.safety_score = min(1.0, route.safety_score * 1.1)
+            elif preference == RoutePreference.ENERGY_EFFICIENT:
+                route.energy_efficiency = min(1.0, route.energy_efficiency * 1.1)
+            elif preference == RoutePreference.SCENIC:
+                route.scenic_score = min(1.0, route.scenic_score * 1.1)
+            elif preference == RoutePreference.HEALTHY:
+                # Boost sustainability points for healthy routes
+                route.total_sustainability_points = int(route.total_sustainability_points * 1.2)
+
+        return route
+
+    def _sort_routes_by_preferences(self, routes: List[Route], preferences: List[RoutePreference]) -> List[Route]:
+        """Sort routes by preference priority."""
+        if not preferences:
+            return routes
+
+        def route_score(route: Route) -> float:
+            score = 0.0
+            for pref in preferences:
+                if pref == RoutePreference.FASTEST:
+                    score += 1000.0 / max(route.total_time, 1)  # Higher score for faster routes
+                elif pref == RoutePreference.SAFEST:
+                    score += route.safety_score * 100
+                elif pref == RoutePreference.ENERGY_EFFICIENT:
+                    score += route.energy_efficiency * 100
+                elif pref == RoutePreference.SCENIC:
+                    score += route.scenic_score * 100
+                elif pref == RoutePreference.HEALTHY:
+                    score += route.total_sustainability_points
+                elif pref == RoutePreference.CHEAPEST:
+                    # Assume cheaper = less distance for walking/biking
+                    score += 1000.0 / max(route.total_distance, 1)
+            return score
+
+        return sorted(routes, key=route_score, reverse=True)
 
     async def close(self):
         """Close API client connections."""

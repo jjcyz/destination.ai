@@ -37,10 +37,10 @@ class Settings(BaseSettings):
 
     # Vancouver-specific settings
     vancouver_bounds: dict = {
-        "north": 49.3,
-        "south": 49.2,
-        "east": -123.0,
-        "west": -123.3
+        "north": 49.35,  # Extended to include Stanley Park and North Vancouver
+        "south": 49.15,  # Extended to include Richmond area
+        "east": -122.9,  # Extended east
+        "west": -123.4   # Extended west to include UBC area
     }
 
     # API endpoints
@@ -84,7 +84,7 @@ def validate_api_keys() -> dict:
     }
 
     # Check if all required keys are present
-    required_keys = ["google_maps", "openweather"]  # Minimum required
+    required_keys = ["google_maps"]
     validation_results["all_required"] = all(validation_results[key] for key in required_keys)
 
     return validation_results

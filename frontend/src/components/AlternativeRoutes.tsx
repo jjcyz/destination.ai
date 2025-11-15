@@ -53,7 +53,12 @@ const AlternativeRoutes: React.FC<AlternativeRoutesProps> = ({
     return colors[preference as keyof typeof colors] || 'from-gray-500 to-slate-500'
   }
 
-  const formatTime = (minutes: number) => {
+  const formatTime = (seconds: number) => {
+    // Convert seconds to minutes (backend returns time in seconds)
+    if (seconds < 60) {
+      return `${seconds}s`
+    }
+    const minutes = Math.floor(seconds / 60)
     if (minutes < 60) return `${minutes}m`
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
@@ -182,7 +187,7 @@ const AlternativeRoutes: React.FC<AlternativeRoutesProps> = ({
                   </div>
                   <div className="text-center">
                     <div className="text-lg font-semibold text-green-600">
-                      {route.energy_efficiency || 85}%
+                      {Math.round((route.energy_efficiency || 0.9) * 100)}%
                     </div>
                     <div className="text-xs text-gray-500">Eco Score</div>
                   </div>
@@ -227,11 +232,11 @@ const AlternativeRoutes: React.FC<AlternativeRoutesProps> = ({
                           {route.steps.map((step, stepIndex) => (
                             <div
                               key={stepIndex}
-                              className="flex items-center justify-between p-3 bg-white/40 rounded-lg"
+                              className="flex items-center justify-between p-3 bg-white/40 rounded-lg hover:bg-white/60 transition-colors"
                             >
-                              <div className="flex items-center space-x-3">
+                              <div className="flex items-center space-x-3 flex-1 min-w-0">
                                 <div className={cn(
-                                  "w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm",
+                                  "w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm flex-shrink-0",
                                   `mode-${step.mode}`
                                 )}>
                                   {step.mode === 'walking' && '🚶'}
@@ -241,16 +246,30 @@ const AlternativeRoutes: React.FC<AlternativeRoutesProps> = ({
                                   {step.mode === 'bus' && '🚌'}
                                   {step.mode === 'skytrain' && '🚇'}
                                 </div>
-                                <div>
-                                  <div className="font-medium text-gray-900 capitalize">
-                                    {step.mode}
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-gray-900 text-sm sm:text-base truncate">
+                                    {step.instructions || `Continue ${formatDistance(step.distance)}`}
                                   </div>
-                                  <div className="text-sm text-gray-500">
-                                    {formatDistance(step.distance)}
+                                  <div className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                                    <span className="capitalize">{step.mode}</span>
+                                    {step.distance > 0 && (
+                                      <>
+                                        <span className="mx-1">•</span>
+                                        {formatDistance(step.distance)}
+                                      </>
+                                    )}
+                                    {step.sustainability_points > 0 && (
+                                      <>
+                                        <span className="mx-1">•</span>
+                                        <span className="text-green-600 font-medium">
+                                          +{step.sustainability_points} pts
+                                        </span>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               </div>
-                              <div className="text-sm text-gray-600">
+                              <div className="text-xs sm:text-sm text-gray-600 ml-3 flex-shrink-0">
                                 {formatTime(step.estimated_time)}
                               </div>
                             </div>

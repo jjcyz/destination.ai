@@ -105,6 +105,66 @@ class GoogleMapsClient:
             logger.error(f"Error fetching traffic data: {e}")
             return []
 
+    async def get_directions(
+        self,
+        origin: Point,
+        destination: Point,
+        mode: str = "driving",
+        alternatives: bool = True,
+        avoid: Optional[List[str]] = None,
+        departure_time: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get directions from Google Maps Directions API.
+
+        Args:
+            origin: Starting point
+            destination: Ending point
+            mode: Travel mode (driving, walking, bicycling, transit)
+            alternatives: Whether to return alternative routes
+            avoid: List of features to avoid (tolls, highways, ferries, indoor)
+            departure_time: Departure time (Unix timestamp or 'now')
+
+        Returns:
+            Directions response dictionary or None
+        """
+        if not self.api_key:
+            logger.warning("Google Maps API key not configured")
+            return None
+
+        try:
+            url = f"{self.base_url}/directions/json"
+            params = {
+                "origin": f"{origin.lat},{origin.lng}",
+                "destination": f"{destination.lat},{destination.lng}",
+                "mode": mode,
+                "alternatives": "true" if alternatives else "false",
+                "key": self.api_key
+            }
+
+            if avoid:
+                params["avoid"] = "|".join(avoid)
+
+            if departure_time:
+                params["departure_time"] = departure_time
+            else:
+                params["departure_time"] = "now"
+                params["traffic_model"] = "best_guess"
+
+            response = await self.client.get(url, params=params)
+            response.raise_for_status()
+
+            data = response.json()
+            if data.get("status") == "OK":
+                return data
+
+            logger.error(f"Google Directions API error: {data.get('status')} - {data.get('error_message', '')}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error fetching directions: {e}")
+            return None
+
     async def geocode(self, address: str) -> Optional[Point]:
         """Geocode an address to coordinates."""
         if not self.api_key:
