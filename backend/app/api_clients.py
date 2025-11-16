@@ -14,6 +14,8 @@ from .models import (
     TransitData, BikeScooterData, TransportMode
 )
 from .config import settings
+from .gtfs_parser import GTFSRTParser
+from .gtfs_static import GTFSStaticParser
 
 logger = logging.getLogger(__name__)
 
@@ -194,68 +196,239 @@ class GoogleMapsClient:
 
 
 class TransLinkClient:
-    """Client for TransLink (Vancouver public transit) API."""
+    """Client for TransLink (Vancouver public transit) GTFS-RT V3 API.
+
+    Note: The old RTTI API was retired on December 3, 2024.
+    This client now uses the GTFS Realtime V3 API.
+    """
 
     def __init__(self):
         self.api_key = settings.translink_api_key
         self.base_url = settings.translink_base_url
         self.client = httpx.AsyncClient(timeout=30.0)
+        self.parser = GTFSRTParser()
+        self.gtfs_static = GTFSStaticParser()  # For stop name to ID mapping
 
-    async def get_nearby_stops(self, point: Point, radius: int = 500) -> List[TransitData]:
-        """Get nearby transit stops."""
+        # Pre-load GTFS static feed in background to avoid blocking
+        # This will be loaded lazily on first use, but we can trigger it early
+        self._gtfs_loading_started = False
+        self._gtfs_loading_lock = asyncio.Lock()
+
+        # Cache for parsed GTFS-RT data (refresh every 30 seconds)
+        self._trip_updates_cache: Optional[List[Dict]] = None
+        self._vehicle_positions_cache: Optional[List[Dict]] = None
+        self._service_alerts_cache: Optional[List[Dict]] = None
+        self._cache_timestamp: Optional[datetime] = None
+        self._cache_ttl = 30  # seconds
+
+    async def ensure_gtfs_loaded(self):
+        """Ensure GTFS static feed is loaded (non-blocking)."""
+        if not self.gtfs_static:
+            return
+
+        # Check if already loaded (fast path)
+        if self.gtfs_static._loaded:
+            return
+
+        # Use lock to prevent concurrent loading
+        async with self._gtfs_loading_lock:
+            # Double-check after acquiring lock
+            if self.gtfs_static._loaded:
+                return
+
+            # Load in thread pool to avoid blocking event loop
+            if not self._gtfs_loading_started:
+                self._gtfs_loading_started = True
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(None, self.gtfs_static.load)
+
+    async def get_trip_updates(self) -> bytes:
+        """Get GTFS Realtime trip updates feed (Protocol Buffer format)."""
         if not self.api_key:
             logger.warning("TransLink API key not configured")
-            return []
+            return b""
 
         try:
-            url = f"{self.base_url}/rttiapi/v1/stops"
-            params = {
-                "apikey": self.api_key,
-                "lat": point.lat,
-                "long": point.lng,
-                "radius": radius
-            }
-
-            response = await self.client.get(url, params=params)
-            response.raise_for_status()
-
-            data = response.json()
-            stops = []
-
-            for stop in data:
-                stops.append(TransitData(
-                    route_id=stop.get("RouteNo", ""),
-                    route_name=stop.get("RouteName", ""),
-                    stop_id=stop.get("StopNo", ""),
-                    stop_name=stop.get("Name", ""),
-                    next_arrival=datetime.now() + timedelta(minutes=stop.get("Schedules", [{}])[0].get("ExpectedCountdown", 0)),
-                    vehicle_type="bus",
-                    accessibility=stop.get("WheelchairAccess", False)
-                ))
-
-            return stops
-
-        except Exception as e:
-            logger.error(f"Error fetching TransLink stops: {e}")
-            return []
-
-    async def get_route_info(self, route_id: str) -> Dict[str, Any]:
-        """Get detailed route information."""
-        if not self.api_key:
-            return {}
-
-        try:
-            url = f"{self.base_url}/rttiapi/v1/routes/{route_id}"
+            url = f"{self.base_url}/gtfsrealtime"
             params = {"apikey": self.api_key}
 
             response = await self.client.get(url, params=params)
             response.raise_for_status()
 
-            return response.json()
+            return response.content  # Return raw bytes (Protocol Buffer format)
 
         except Exception as e:
-            logger.error(f"Error fetching route info: {e}")
-            return {}
+            logger.error(f"Error fetching TransLink trip updates: {e}")
+            return b""
+
+    async def get_parsed_trip_updates(self) -> List[Dict]:
+        """
+        Get parsed GTFS-RT trip updates.
+
+        Returns:
+            List of parsed trip update dictionaries
+        """
+        # Check cache
+        if self._trip_updates_cache and self._cache_timestamp:
+            cache_age = (datetime.now() - self._cache_timestamp).total_seconds()
+            if cache_age < self._cache_ttl:
+                return self._trip_updates_cache
+
+        # Fetch and parse
+        feed_data = await self.get_trip_updates()
+        if not feed_data:
+            return []
+
+        self._trip_updates_cache = self.parser.parse_trip_updates(feed_data)
+        self._cache_timestamp = datetime.now()
+
+        return self._trip_updates_cache
+
+    async def get_parsed_vehicle_positions(self) -> List[Dict]:
+        """
+        Get parsed GTFS-RT vehicle positions.
+
+        Returns:
+            List of parsed vehicle position dictionaries
+        """
+        # Check cache
+        if self._vehicle_positions_cache and self._cache_timestamp:
+            cache_age = (datetime.now() - self._cache_timestamp).total_seconds()
+            if cache_age < self._cache_ttl:
+                return self._vehicle_positions_cache
+
+        # Fetch and parse
+        feed_data = await self.get_position_updates()
+        if not feed_data:
+            return []
+
+        self._vehicle_positions_cache = self.parser.parse_vehicle_positions(feed_data)
+        self._cache_timestamp = datetime.now()
+
+        return self._vehicle_positions_cache
+
+    async def get_parsed_service_alerts(self) -> List[Dict]:
+        """
+        Get parsed GTFS-RT service alerts.
+
+        Returns:
+            List of parsed service alert dictionaries
+        """
+        # Check cache
+        if self._service_alerts_cache and self._cache_timestamp:
+            cache_age = (datetime.now() - self._cache_timestamp).total_seconds()
+            if cache_age < self._cache_ttl:
+                return self._service_alerts_cache
+
+        # Fetch and parse
+        feed_data = await self.get_service_alerts()
+        if not feed_data:
+            return []
+
+        self._service_alerts_cache = self.parser.parse_service_alerts(feed_data)
+        self._cache_timestamp = datetime.now()
+
+        return self._service_alerts_cache
+
+    async def get_stop_arrival_info(
+        self,
+        route_id: str,
+        stop_identifier: str
+    ) -> Optional[Dict]:
+        """
+        Get real-time arrival information for a specific stop and route.
+
+        Args:
+            route_id: GTFS route ID (e.g., "99") or route short name
+            stop_identifier: GTFS stop ID or stop name
+
+        Returns:
+            Dictionary with arrival time and delay information, or None
+        """
+        # Try to resolve route short name to route ID
+        resolved_route_id = route_id
+        if self.gtfs_static:
+            await self.ensure_gtfs_loaded()
+            resolved_route_id = self.gtfs_static.get_route_id_by_short_name(route_id) or route_id
+
+        trip_updates = await self.get_parsed_trip_updates()
+        return self.parser.get_stop_arrival_time(trip_updates, resolved_route_id, stop_identifier)
+
+    async def get_route_real_time_delays(self, route_id: str) -> List[Dict]:
+        """
+        Get all real-time delays for a specific route.
+
+        Args:
+            route_id: GTFS route ID
+
+        Returns:
+            List of delay information for stops on this route
+        """
+        trip_updates = await self.get_parsed_trip_updates()
+        return self.parser.get_route_delays(trip_updates, route_id)
+
+    async def get_position_updates(self) -> bytes:
+        """Get GTFS Realtime position updates feed (Protocol Buffer format)."""
+        if not self.api_key:
+            logger.warning("TransLink API key not configured")
+            return b""
+
+        try:
+            url = f"{self.base_url}/gtfsposition"
+            params = {"apikey": self.api_key}
+
+            response = await self.client.get(url, params=params)
+            response.raise_for_status()
+
+            return response.content  # Return raw bytes (Protocol Buffer format)
+
+        except Exception as e:
+            logger.error(f"Error fetching TransLink position updates: {e}")
+            return b""
+
+    async def get_service_alerts(self) -> bytes:
+        """Get GTFS Realtime service alerts feed (Protocol Buffer format)."""
+        if not self.api_key:
+            logger.warning("TransLink API key not configured")
+            return b""
+
+        try:
+            url = f"{self.base_url}/gtfsalerts"
+            params = {"apikey": self.api_key}
+
+            response = await self.client.get(url, params=params)
+            response.raise_for_status()
+
+            return response.content  # Return raw bytes (Protocol Buffer format)
+
+        except Exception as e:
+            logger.error(f"Error fetching TransLink service alerts: {e}")
+            return b""
+
+    async def get_nearby_stops(self, point: Point, radius: int = 500) -> List[TransitData]:
+        """Get nearby transit stops.
+
+        Note: The old RTTI API endpoint for querying stops by location is no longer available.
+        This method is kept for backwards compatibility but returns empty list.
+        To get real-time transit data, use get_trip_updates() and parse the GTFS-RT feed.
+        """
+        logger.warning(
+            "get_nearby_stops() is deprecated. The RTTI API was retired on Dec 3, 2024. "
+            "Use GTFS-RT feeds (get_trip_updates()) instead."
+        )
+        return []
+
+    async def get_route_info(self, route_id: str) -> Dict[str, Any]:
+        """Get detailed route information.
+
+        Note: The old RTTI API endpoint for route info is no longer available.
+        This method is kept for backwards compatibility but returns empty dict.
+        """
+        logger.warning(
+            "get_route_info() is deprecated. The RTTI API was retired on Dec 3, 2024. "
+            "Use GTFS-RT feeds instead."
+        )
+        return {}
 
 
 class LimeClient:
@@ -469,7 +642,7 @@ class APIClientManager:
             "construction": results[7] if not isinstance(results[7], Exception) else []
         }
 
-    async def close(self):
+    async def close(self) -> None:
         """Close all HTTP clients."""
         await self.google_maps.client.aclose()
         await self.translink.client.aclose()

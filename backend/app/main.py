@@ -374,7 +374,15 @@ async def get_sustainability_tips():
 
 
 def _is_within_vancouver_bounds(point: Point) -> bool:
-    """Check if a point is within Vancouver city bounds."""
+    """
+    Check if a point is within Vancouver city bounds.
+
+    Args:
+        point: Geographic point to check
+
+    Returns:
+        True if point is within bounds, False otherwise
+    """
     bounds = settings.vancouver_bounds
     return (
         bounds["south"] <= point.lat <= bounds["north"] and
@@ -384,7 +392,7 @@ def _is_within_vancouver_bounds(point: Point) -> bool:
 
 if __name__ == "__main__":
     uvicorn.run(
-        "app.main:app",
+        "backend.app.main:app",
         host="0.0.0.0",
         port=8000,
         reload=settings.debug,

@@ -11,8 +11,10 @@ import sys
 from typing import Optional, List
 from datetime import datetime
 
-# Add the app directory to the Python path
-sys.path.append('.')
+# Add the backend directory to the Python path
+import os
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, backend_dir)
 
 from app.models import (
     RouteRequest, Point, RoutePreference, TransportMode, UserProfile
@@ -65,8 +67,8 @@ class RouteCLI:
         if not preferences:
             preferences = ["fastest"]
 
-        print(f"\n🗺️  Finding routes from {origin} to {destination}")
-        print(f"   Preferences: {', '.join(preferences)}")
+        print(f"Finding routes from {origin} to {destination}")
+        print(f"Preferences: {', '.join(preferences)}")
 
         try:
             # Geocode addresses (simplified - in real implementation would use API)
@@ -74,7 +76,7 @@ class RouteCLI:
             destination_point = self._parse_coordinates_or_geocode(destination)
 
             if not origin_point or not destination_point:
-                print("❌ Could not resolve origin or destination coordinates")
+                print("Could not resolve origin or destination coordinates")
                 return
 
             # Create route request
@@ -95,7 +97,7 @@ class RouteCLI:
             )
 
             # Find routes
-            print("🔍 Calculating routes...")
+            print("Calculating routes...")
             response = await self.routing_engine.find_routes(request)
 
             # Display results
@@ -106,7 +108,7 @@ class RouteCLI:
                 self._display_gamification_rewards(response.routes[0])
 
         except Exception as e:
-            print(f"❌ Error finding routes: {e}")
+            print(f"Error finding routes: {e}")
 
     def _parse_coordinates_or_geocode(self, location: str) -> Optional[Point]:
         """Parse coordinates or return mock coordinates for demo."""
@@ -138,11 +140,11 @@ class RouteCLI:
 
     def _display_routes(self, response):
         """Display route results."""
-        print(f"\n📊 Found {len(response.routes)} route(s) in {response.processing_time:.2f}s")
+        print(f"\n Found {len(response.routes)} route(s) in {response.processing_time:.2f}s")
         print(f"   Data sources: {', '.join(response.data_sources)}")
 
         for i, route in enumerate(response.routes, 1):
-            print(f"\n🛣️  Route {i}: {route.preference.value.title()}")
+            print(f"\n Route {i}: {route.preference.value.title()}")
             print(f"   Total distance: {route.total_distance/1000:.2f} km")
             print(f"   Total time: {route.total_time//60} min {route.total_time%60} sec")
             print(f"   Sustainability points: {route.total_sustainability_points}")
@@ -157,7 +159,7 @@ class RouteCLI:
                     print(f"        Slope: {step.slope:.1f}%, Effort: {step.effort_level}")
 
         if response.alternatives:
-            print(f"\n🔄 {len(response.alternatives)} alternative route(s) available")
+            print(f"\n {len(response.alternatives)} alternative route(s) available")
 
     def _display_gamification_rewards(self, route):
         """Display gamification rewards."""

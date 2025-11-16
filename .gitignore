@@ -1,4 +1,4 @@
-# Environment variables and secrets
+# Environment variables
 .env
 .env.local
 .env.production
@@ -23,46 +23,44 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
 # Virtual environments
-.env
-.venv
-env/
 venv/
+env/
 ENV/
 env.bak/
 venv.bak/
+.venv
+backend/venv/
+frontend/venv/
 
-# Virtual environment (created by setup script)
-venv/
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Frontend build outputs
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/out/
+frontend/.vite/
+
+# Backend build outputs
+backend/dist/
+backend/build/
+*.pyc
+*.pyo
 
 # IDEs
 .vscode/
@@ -70,8 +68,40 @@ venv/
 *.swp
 *.swo
 *~
+.DS_Store
 
-# OS generated files
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.coverage.*
+.pytest_cache/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+
+# API keys and secrets
+secrets/
+*.key
+*.pem
+
+# OS files
 .DS_Store
 .DS_Store?
 ._*
@@ -80,141 +110,15 @@ venv/
 ehthumbs.db
 Thumbs.db
 
-# Node.js (for frontend)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-.pnpm-debug.log*
+# GTFS files (Downloaded from TransLink)
+gtfs/*.txt
+gtfs/*.csv
 
-# Frontend build outputs
-frontend/dist/
-frontend/build/
-frontend/.next/
-frontend/out/
+# Deployment
+.vercel/
+.netlify/
+.firebase/
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-data/
-*.db-journal
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-
-# Temporary files
-tmp/
-temp/
-.tmp/
-.temp/
-
-# API keys and sensitive data
-secrets/
-*.key
-*.pem
-*.p12
-*.pfx
-
-# Documentation and summaries (not needed to run the code)
-# Keep README.md and DEPLOYMENT.md as requested
-# PROJECT_SUMMARY.md
-# API_SETUP.md
-# *.md
-docs/
-
-# Demo and example files
-# run_demo.py
-examples/
-demos/
-
-# Test files
-tests/
-test_*.py
-*_test.py
-
-# Backup files
-*.bak
-*.backup
-*.old
-
-# Cache directories
-.cache/
-.parcel-cache/
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variables file
-.env.test
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# Next.js build output
-.next
-
-# Nuxt.js build / generate output
-.nuxt
-dist
-
-# Gatsby files
-.cache/
-public
-
-# Storybook build outputs
-.out
-.storybook-out
-
-# Temporary folders
-tmp/
-temp/
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Local development
-.local
-
-# Vercel
-vercel.json
-.vercelignore
-.vercel
+# Documentation build
+docs/_build/
+site/

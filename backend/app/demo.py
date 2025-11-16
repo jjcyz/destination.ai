@@ -320,8 +320,7 @@ class DemoDataProvider:
         """Get demo weather data."""
         conditions = [
             WeatherCondition.CLEAR,
-            WeatherCondition.PARTLY_CLOUDY,
-            WeatherCondition.CLOUDY,
+            WeatherCondition.FOG,
             WeatherCondition.RAIN,
             WeatherCondition.SNOW
         ]

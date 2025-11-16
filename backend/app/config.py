@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
     # API endpoints
     google_maps_base_url: str = "https://maps.googleapis.com/maps/api"
-    translink_base_url: str = "https://api.translink.ca"
+    translink_base_url: str = "https://gtfsapi.translink.ca/v3"
     lime_base_url: str = "https://web-production.lime.bike/api/rider/v1"
     openweather_base_url: str = "https://api.openweathermap.org/data/2.5"
     vancouver_open_data_base_url: str = "https://opendata.vancouver.ca/api/3/action"
@@ -95,19 +95,6 @@ def get_api_key_instructions() -> str:
     Return instructions for obtaining API keys.
     """
     return """
-    API Key Setup Instructions:
-
-    1. Google Maps API:
-       - Go to https://console.cloud.google.com/
-       - Create a new project or select existing one
-       - Enable the following APIs:
-         * Maps JavaScript API
-         * Directions API
-         * Distance Matrix API
-         * Elevation API
-         * Roads API
-       - Create credentials (API Key)
-       - Set GOOGLE_MAPS_API_KEY in your .env file
 
     2. OpenWeatherMap API:
        - Go to https://openweathermap.org/api

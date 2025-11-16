@@ -13,7 +13,7 @@ import asyncio
 
 from .models import (
     Point, Node, Edge, Route, RouteStep, RouteRequest, RouteResponse,
-    TransportMode, RoutePreference, WeatherData, TrafficData
+    TransportMode, RoutePreference, WeatherData, WeatherCondition, TrafficData
 )
 from .graph_builder import VancouverGraphBuilder
 from .api_clients import APIClientManager
@@ -89,6 +89,21 @@ class RoutingEngine:
             # Get real-time data (weather, transit, etc.) for enhancement
             real_time_data = await self.api_client.get_all_data(request.origin, request.destination)
 
+            # Get TransLink GTFS-RT real-time data
+            translink_trip_updates = []
+            translink_service_alerts = []
+            if self.api_client.translink.api_key:
+                try:
+                    translink_trip_updates = await self.api_client.translink.get_parsed_trip_updates()
+                    translink_service_alerts = await self.api_client.translink.get_parsed_service_alerts()
+                    real_time_data['translink_trip_updates'] = translink_trip_updates
+                    real_time_data['translink_service_alerts'] = translink_service_alerts
+                except Exception as e:
+                    logger.warning(f"Could not fetch TransLink GTFS-RT data: {e}")
+
+            # Update graph with real-time data (weather penalties, traffic, etc.)
+            await self._update_graph_with_real_time_data(real_time_data)
+
             # Get routes from Google Maps for each transport mode and preference
             routes = []
             alternatives = []
@@ -109,88 +124,115 @@ class RoutingEngine:
 
             # Get routes for each requested transport mode
             for transport_mode in request.transport_modes:
-                # Skip if we already processed transit modes
-                if transport_mode in transit_modes and "transit" in processed_modes:
-                    continue
+                try:
+                    # Skip if we already processed transit modes
+                    if transport_mode in transit_modes and "transit" in processed_modes:
+                        logger.debug(f"Skipping {transport_mode} - transit already processed")
+                        continue
 
-                google_mode = mode_mapping.get(transport_mode, "driving")
-                processed_modes.add(google_mode)
+                    google_mode = mode_mapping.get(transport_mode, "driving")
+                    if google_mode in processed_modes:
+                        logger.debug(f"Skipping {transport_mode} - {google_mode} already processed")
+                        continue
 
-                # Build avoid list based on preferences
-                avoid_list = []
-                if request.avoid_highways:
-                    avoid_list.append("highways")
+                    processed_modes.add(google_mode)
+                    logger.info(f"Processing transport mode: {transport_mode} -> Google Maps mode: {google_mode}")
 
-                # Get directions from Google Maps
-                directions_data = await self.api_client.google_maps.get_directions(
-                    origin=request.origin,
-                    destination=request.destination,
-                    mode=google_mode,
-                    alternatives=True,
-                    avoid=avoid_list if avoid_list else None,
-                    departure_time="now" if request.departure_time else None
-                )
+                    # Build avoid list based on preferences
+                    avoid_list = []
+                    if request.avoid_highways:
+                        avoid_list.append("highways")
 
-                if not directions_data or not directions_data.get("routes"):
-                    logger.warning(f"No routes found for mode {google_mode}")
-                    continue
-
-                # Process each route from Google Maps
-                for route_idx, google_route in enumerate(directions_data.get("routes", [])):
-                    # Determine actual transport mode from route data
-                    actual_mode = transport_mode
-                    if google_mode == "transit":
-                        # Check if route uses bus or train
-                        for leg in google_route.get("legs", []):
-                            for step in leg.get("steps", []):
-                                transit_details = step.get("transit_details")
-                                if transit_details:
-                                    vehicle_type = transit_details.get("line", {}).get("vehicle", {}).get("type", "")
-                                    if vehicle_type == "SUBWAY" or "train" in vehicle_type.lower():
-                                        actual_mode = TransportMode.SKYTRAIN
-                                    else:
-                                        actual_mode = TransportMode.BUS
-                                    break
-                            if actual_mode != transport_mode:
-                                break
-
-                    # Convert Google Maps route to our Route model
-                    route = await self._convert_google_route_to_route(
-                        google_route,
-                        request,
-                        actual_mode,
-                        real_time_data
+                    # Get directions from Google Maps
+                    directions_data = await self.api_client.google_maps.get_directions(
+                        origin=request.origin,
+                        destination=request.destination,
+                        mode=google_mode,
+                        alternatives=True,
+                        avoid=avoid_list if avoid_list else None,
+                        departure_time="now" if request.departure_time else None
                     )
 
-                    if route:
-                        # Apply preference-based scoring
-                        route = self._apply_preference_scoring(route, request.preferences)
+                    if not directions_data or not directions_data.get("routes"):
+                        logger.warning(f"No routes found for mode {transport_mode} (Google Maps mode: {google_mode})")
+                        continue
 
-                        if route_idx == 0:
+                    logger.info(f"Found {len(directions_data.get('routes', []))} routes for {transport_mode}")
+
+                    # Process each route from Google Maps
+                    for route_idx, google_route in enumerate(directions_data.get("routes", [])):
+                        try:
+                            # Determine actual transport mode from route data
+                            actual_mode = transport_mode
+                            if google_mode == "transit":
+                                # Check if route uses bus or train
+                                for leg in google_route.get("legs", []):
+                                    for step in leg.get("steps", []):
+                                        transit_details = step.get("transit_details")
+                                        if transit_details:
+                                            vehicle_type = transit_details.get("line", {}).get("vehicle", {}).get("type", "")
+                                            if vehicle_type == "SUBWAY" or "train" in vehicle_type.lower():
+                                                actual_mode = TransportMode.SKYTRAIN
+                                            else:
+                                                actual_mode = TransportMode.BUS
+                                            break
+                                    if actual_mode != transport_mode:
+                                        break
+
+                            # Convert Google Maps route to our Route model
+                            route = await self._convert_google_route_to_route(
+                                google_route,
+                                request,
+                                actual_mode,
+                                real_time_data
+                            )
+
+                            if route:
+                                # Apply preference-based scoring
+                                route = self._apply_preference_scoring(route, request.preferences)
+
+                                if route_idx == 0:
+                                    routes.append(route)
+                                    logger.info(f"Added route for {actual_mode} (primary)")
+                                else:
+                                    alternatives.append(route)
+                                    logger.debug(f"Added alternative route for {actual_mode}")
+                            else:
+                                logger.warning(f"Route conversion returned None for {transport_mode} route {route_idx}")
+                        except Exception as e:
+                            logger.error(f"Error processing route {route_idx} for {transport_mode}: {e}", exc_info=True)
+                            continue
+                except Exception as e:
+                    logger.error(f"Error processing transport mode {transport_mode}: {e}", exc_info=True)
+                    continue
+
+            # If no routes found, try with first requested mode (not always car)
+            if not routes and request.transport_modes:
+                first_mode = request.transport_modes[0]
+                google_mode = mode_mapping.get(first_mode, "driving")
+                logger.warning(f"No routes found with requested modes, trying fallback: {first_mode} ({google_mode})")
+
+                try:
+                    directions_data = await self.api_client.google_maps.get_directions(
+                        origin=request.origin,
+                        destination=request.destination,
+                        mode=google_mode,
+                        alternatives=True
+                    )
+
+                    if directions_data and directions_data.get("routes"):
+                        route = await self._convert_google_route_to_route(
+                            directions_data["routes"][0],
+                            request,
+                            first_mode,
+                            real_time_data
+                        )
+                        if route:
+                            route = self._apply_preference_scoring(route, request.preferences)
                             routes.append(route)
-                        else:
-                            alternatives.append(route)
-
-            # If no routes found, try with default mode
-            if not routes:
-                logger.warning("No routes found with requested modes, trying default")
-                directions_data = await self.api_client.google_maps.get_directions(
-                    origin=request.origin,
-                    destination=request.destination,
-                    mode="driving",
-                    alternatives=True
-                )
-
-                if directions_data and directions_data.get("routes"):
-                    route = await self._convert_google_route_to_route(
-                        directions_data["routes"][0],
-                        request,
-                        TransportMode.CAR,
-                        real_time_data
-                    )
-                    if route:
-                        route = self._apply_preference_scoring(route, request.preferences)
-                        routes.append(route)
+                            logger.info(f"Added fallback route for {first_mode}")
+                except Exception as e:
+                    logger.error(f"Error in fallback route calculation: {e}", exc_info=True)
 
             # Sort routes by preference priority
             routes = self._sort_routes_by_preferences(routes, request.preferences)
@@ -765,6 +807,56 @@ class RoutingEngine:
 
         return base_penalty
 
+    async def _get_realtime_transit_info(
+        self,
+        trip_updates: List[Dict],
+        route_id: str,
+        stop_identifier: str,
+        lat: Optional[float] = None,
+        lng: Optional[float] = None
+    ) -> Optional[Dict]:
+        """
+        Get real-time transit information for a route and stop.
+
+        Args:
+            trip_updates: Parsed GTFS-RT trip updates
+            route_id: Route ID (e.g., "6641" for route 99)
+            stop_identifier: Stop ID or stop name
+            lat: Optional latitude for location-based bay selection
+            lng: Optional longitude for location-based bay selection
+
+        Returns:
+            Dictionary with real-time arrival info or None
+        """
+        if not trip_updates:
+            return None
+
+        # Use GTFS parser to find matching stop arrival info
+        from .gtfs_parser import GTFSRTParser
+
+        # Try route-based stop selection if GTFS static feed available
+        if self.api_client.translink.gtfs_static and lat is not None and lng is not None:
+            # Ensure GTFS static feed is loaded (non-blocking)
+            await self.api_client.translink.ensure_gtfs_loaded()
+            # Use route-based selection with location
+            route_stop_id = self.api_client.translink.gtfs_static.get_route_stops_at_location(
+                route_id,
+                stop_identifier,
+                lat,
+                lng
+            )
+            if route_stop_id:
+                stop_identifier = route_stop_id
+
+        # Try with stop_id, using route-based selection
+        arrival_info = GTFSRTParser.get_stop_arrival_time(
+            trip_updates,
+            route_id,
+            stop_identifier
+        )
+
+        return arrival_info
+
 
     async def _convert_google_route_to_route(
         self,
@@ -811,18 +903,52 @@ class RoutingEngine:
                     # Calculate sustainability points
                     sustainability_points = self._calculate_sustainability_points(transport_mode, step_distance)
 
-                    # Determine effort level based on distance and mode
+                    # Apply weather penalties to walking and biking
+                    weather = real_time_data.get("weather")
+                    if weather and transport_mode in [TransportMode.WALKING, TransportMode.BIKING]:
+                        weather_penalty = self._calculate_weather_penalty(weather)
+                        # Adjust time based on weather
+                        step_duration = int(step_duration * weather_penalty)
+
+                        # Add weather info to instructions
+                        if weather.condition.value != "clear":
+                            weather_note = {
+                                "rain": "🌧️ Rainy conditions",
+                                "snow": "❄️ Snowy conditions",
+                                "fog": "🌫️ Foggy conditions",
+                                "extreme": "⚠️ Extreme weather"
+                            }.get(weather.condition.value, "")
+                            if weather_note:
+                                instructions = f"{weather_note} - {instructions}"
+
+                    # Determine effort level based on distance, mode, and weather
                     effort_level = "moderate"
                     if transport_mode == TransportMode.WALKING:
                         if step_distance > 1000:
                             effort_level = "high"
                         elif step_distance < 200:
                             effort_level = "low"
+                        # Weather increases effort for walking
+                        if weather and weather.condition.value in ["rain", "snow", "extreme"]:
+                            if effort_level == "low":
+                                effort_level = "moderate"
+                            elif effort_level == "moderate":
+                                effort_level = "high"
                     elif transport_mode == TransportMode.BIKING:
                         if step_distance > 5000:
                             effort_level = "high"
                         elif step_distance < 500:
                             effort_level = "low"
+                        # Weather increases effort for biking
+                        if weather and weather.condition.value in ["rain", "snow", "extreme"]:
+                            if effort_level == "low":
+                                effort_level = "moderate"
+                            elif effort_level == "moderate":
+                                effort_level = "high"
+                        # Wind affects biking more
+                        if weather and weather.wind_speed > 25:  # km/h
+                            if effort_level == "moderate":
+                                effort_level = "high"
 
                     # Get elevation data if available (skip for performance - can be enabled if needed)
                     slope = None
@@ -843,12 +969,112 @@ class RoutingEngine:
                     if transport_mode in [TransportMode.BUS, TransportMode.SKYTRAIN]:
                         transit_step = step.get("transit_details")
                         if transit_step:
+                            # Extract transit information from Google Maps
+                            line_info = transit_step.get("line", {})
+                            departure_info = transit_step.get("departure_stop", {})
+                            arrival_info = transit_step.get("arrival_stop", {})
+
+                            # Extract basic transit information from Google Maps
+                            route_short_name = line_info.get("short_name", "")
+                            route_name = line_info.get("name", "")
+                            departure_stop_name = departure_info.get("name", "")
+                            arrival_stop_name = arrival_info.get("name", "")
+
+                            # Try to get stop IDs from Google Maps (may not always be available)
+                            departure_stop_id = departure_info.get("location", {}).get("place_id") or None
+                            arrival_stop_id = arrival_info.get("location", {}).get("place_id") or None
+
                             transit_details = {
-                                "line": transit_step.get("line", {}).get("name", ""),
-                                "vehicle": transit_step.get("line", {}).get("vehicle", {}).get("name", ""),
-                                "departure_stop": transit_step.get("departure_stop", {}).get("name", ""),
-                                "arrival_stop": transit_step.get("arrival_stop", {}).get("name", ""),
+                                "line": route_name,
+                                "short_name": route_short_name,
+                                "vehicle": line_info.get("vehicle", {}).get("name", ""),
+                                "vehicle_type": line_info.get("vehicle", {}).get("type", ""),
+                                "departure_stop": departure_stop_name,
+                                "departure_stop_id": departure_stop_id,
+                                "departure_time": transit_step.get("departure_time", {}).get("text", ""),
+                                "departure_time_value": transit_step.get("departure_time", {}).get("value"),
+                                "arrival_stop": arrival_stop_name,
+                                "arrival_stop_id": arrival_stop_id,
+                                "arrival_time": transit_step.get("arrival_time", {}).get("text", ""),
+                                "arrival_time_value": transit_step.get("arrival_time", {}).get("value"),
+                                "num_stops": transit_step.get("num_stops", 0),
+                                "headsign": transit_step.get("headsign", ""),
                             }
+
+                            # Try to get real-time TransLink data for this route
+                            translink_trip_updates = real_time_data.get("translink_trip_updates", [])
+                            if translink_trip_updates and route_short_name:
+                                try:
+                                    # Resolve route short name to route ID for better bay selection
+                                    resolved_route_id = route_short_name
+                                    if self.api_client.translink.gtfs_static:
+                                        await self.api_client.translink.ensure_gtfs_loaded()
+                                        resolved_route_id = (
+                                            self.api_client.translink.gtfs_static.get_route_id_by_short_name(route_short_name)
+                                            or route_short_name
+                                        )
+
+                                    # Use stop name (GTFS parser will resolve to stop ID with route-based selection)
+                                    stop_identifier = departure_stop_id or departure_stop_name
+
+                                    # Get coordinates if available for location-based selection
+                                    departure_lat = departure_info.get("location", {}).get("lat")
+                                    departure_lng = departure_info.get("location", {}).get("lng")
+
+                                    # Get real-time arrival info for departure stop
+                                    real_time_arrival = await self._get_realtime_transit_info(
+                                        translink_trip_updates,
+                                        resolved_route_id,
+                                        stop_identifier,
+                                        departure_lat,
+                                        departure_lng
+                                    )
+
+                                    if real_time_arrival:
+                                        # Update with real-time data
+                                        transit_details["real_time_departure"] = real_time_arrival.get("actual_time")
+                                        transit_details["delay_seconds"] = real_time_arrival.get("delay_seconds", 0)
+                                        transit_details["delay_minutes"] = real_time_arrival.get("delay_minutes", 0)
+                                        transit_details["is_delayed"] = real_time_arrival.get("is_delayed", False)
+
+                                        # Adjust step duration based on delay
+                                        if real_time_arrival.get("delay_seconds", 0) > 0:
+                                            step_duration += real_time_arrival.get("delay_seconds", 0)
+
+                                        logger.debug(
+                                            f"Applied real-time delay for route {route_short_name}: "
+                                            f"{real_time_arrival.get('delay_minutes', 0)} minutes"
+                                        )
+                                except Exception as e:
+                                    logger.debug(f"Could not get real-time data for route {route_short_name}: {e}")
+
+                            # Apply weather penalty to transit time if weather is bad
+                            weather = real_time_data.get("weather")
+                            if weather and step_duration > 0:
+                                weather_penalty = self._calculate_weather_penalty(weather)
+                                # Transit is less affected by weather than walking/biking
+                                transit_weather_factor = 1.0 + (weather_penalty - 1.0) * 0.3
+                                step_duration = int(step_duration * transit_weather_factor)
+
+                            # Check for service alerts affecting this route
+                            service_alerts = real_time_data.get("translink_service_alerts", [])
+                            if service_alerts and route_short_name:
+                                route_alerts = [
+                                    alert for alert in service_alerts
+                                    if any(
+                                        entity.get("route_id") == route_short_name
+                                        for entity in alert.get("informed_entity", [])
+                                    )
+                                ]
+                                if route_alerts:
+                                    transit_details["service_alerts"] = [
+                                        {
+                                            "header": alert.get("header_text", ""),
+                                            "description": alert.get("description_text", ""),
+                                            "effect": alert.get("effect"),
+                                        }
+                                        for alert in route_alerts
+                                    ]
 
                     route_step = RouteStep(
                         mode=transport_mode,
