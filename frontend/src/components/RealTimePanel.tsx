@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import {
   Cloud,
@@ -12,9 +12,12 @@ import {
   Car,
   AlertTriangle,
   Construction,
-  MapPin
+  MapPin,
+  Bus,
+  Clock
 } from 'lucide-react'
 import { cn } from '../utils/cn'
+import { useRoute } from '../contexts/RouteContext'
 
 interface WeatherData {
   condition: string
@@ -44,6 +47,43 @@ const RealTimePanel: React.FC<RealTimePanelProps> = ({
   traffic,
   roadEvents = []
 }) => {
+  const { state: routeState } = useRoute()
+
+  // Extract transit delays and alerts from selected route
+  const transitDelays = useMemo(() => {
+    if (!routeState.selectedRoute) return []
+
+    const delays: Array<{ route: string; delay: number; stop: string }> = []
+    routeState.selectedRoute.steps.forEach((step) => {
+      if (step.transit_details && step.transit_details.is_delayed) {
+        delays.push({
+          route: step.transit_details.short_name || step.transit_details.line || 'Transit',
+          delay: step.transit_details.delay_minutes || 0,
+          stop: step.transit_details.departure_stop || 'Unknown'
+        })
+      }
+    })
+    return delays
+  }, [routeState.selectedRoute])
+
+  const transitAlerts = useMemo(() => {
+    if (!routeState.selectedRoute) return []
+
+    const alerts: Array<{ header: string; description: string; route: string }> = []
+    routeState.selectedRoute.steps.forEach((step) => {
+      if (step.transit_details?.service_alerts) {
+        step.transit_details.service_alerts.forEach((alert) => {
+          alerts.push({
+            header: alert.header || 'Service Alert',
+            description: alert.description || '',
+            route: step.transit_details!.short_name || step.transit_details!.line || 'Transit'
+          })
+        })
+      }
+    })
+    return alerts
+  }, [routeState.selectedRoute])
+
   // Mock data for demo
   const mockWeather: WeatherData = {
     condition: 'clear',
@@ -185,6 +225,76 @@ const RealTimePanel: React.FC<RealTimePanelProps> = ({
           <span className="font-medium text-gray-900">{currentTraffic.incidents}</span>
         </div>
       </div>
+
+      {/* Transit Delays */}
+      {transitDelays.length > 0 && (
+        <div className="space-y-3">
+          <span className="text-sm font-medium text-gray-700 flex items-center">
+            <Bus className="w-4 h-4 mr-2" />
+            Transit Delays
+          </span>
+          <div className="space-y-2">
+            {transitDelays.map((delay, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className="flex items-center space-x-3 p-3 rounded-lg border-l-4 border-orange-500 bg-orange-50/50"
+              >
+                <Clock className="w-4 h-4 text-orange-600" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-900">
+                    Route {delay.route}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {delay.stop} • +{delay.delay} min delay
+                  </div>
+                </div>
+                <div className="text-sm font-semibold text-orange-600">
+                  +{delay.delay}m
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Transit Service Alerts */}
+      {transitAlerts.length > 0 && (
+        <div className="space-y-3">
+          <span className="text-sm font-medium text-gray-700 flex items-center">
+            <AlertTriangle className="w-4 h-4 mr-2 text-yellow-600" />
+            Service Alerts
+          </span>
+          <div className="space-y-2">
+            {transitAlerts.map((alert, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className="flex items-start space-x-3 p-3 rounded-lg border-l-4 border-yellow-500 bg-yellow-50/50"
+              >
+                <AlertTriangle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-900">
+                    {alert.header}
+                  </div>
+                  {alert.description && (
+                    <div className="text-xs text-gray-600 mt-0.5">
+                      {alert.description}
+                    </div>
+                  )}
+                  <div className="text-xs text-gray-500 mt-1">
+                    Route {alert.route}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Road Events */}
       {currentRoadEvents.length > 0 && (

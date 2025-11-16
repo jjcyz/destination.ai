@@ -8,13 +8,14 @@ import RealTimePanel from './RealTimePanel'
 import AlternativeRoutes from './AlternativeRoutes'
 import PredictiveNotifications from './PredictiveNotifications'
 import { routeAPI } from '../services/api'
+import type { RouteRequest, Route } from '../types'
 
 const RoutePlanner: React.FC = () => {
   const { state: routeState, dispatch: routeDispatch } = useRoute()
   const { state: userState, dispatch: userDispatch } = useUser()
   const [showMap, setShowMap] = useState(true)
 
-  const handleRouteRequest = async (request: any) => {
+  const handleRouteRequest = async (request: RouteRequest): Promise<void> => {
     routeDispatch({ type: 'SET_LOADING', payload: true })
     routeDispatch({ type: 'CLEAR_ERROR' })
 
@@ -33,23 +34,24 @@ const RoutePlanner: React.FC = () => {
         }
 
         if (rewards.achievements_unlocked?.length > 0) {
-          rewards.achievements_unlocked.forEach((achievement: any) => {
-            userDispatch({ type: 'ADD_ACHIEVEMENT', payload: achievement.id })
+          rewards.achievements_unlocked.forEach((achievementId: string) => {
+            userDispatch({ type: 'ADD_ACHIEVEMENT', payload: achievementId })
           })
         }
 
         if (rewards.badges_earned?.length > 0) {
-          rewards.badges_earned.forEach((badge: any) => {
-            userDispatch({ type: 'ADD_BADGE', payload: badge.id })
+          rewards.badges_earned.forEach((badgeId: string) => {
+            userDispatch({ type: 'ADD_BADGE', payload: badgeId })
           })
         }
       }
-    } catch (error: any) {
-      routeDispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to calculate routes' })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to calculate routes'
+      routeDispatch({ type: 'SET_ERROR', payload: errorMessage })
     }
   }
 
-  const handleRouteSelect = (route: any) => {
+  const handleRouteSelect = (route: Route): void => {
     routeDispatch({ type: 'SELECT_ROUTE', payload: route })
   }
 

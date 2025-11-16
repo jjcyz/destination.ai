@@ -3,27 +3,32 @@ import { Search, MapPin, Settings, Navigation, Clock, Shield, Leaf, Mountain, He
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../utils/cn'
 import ModeSelector from './ModeSelector'
+import type { RouteRequest } from '../types'
+import { MOCK_COORDINATES, DEFAULT_PREFERENCES, DEFAULT_TRANSPORT_MODES, WALKING_DISTANCE_CONFIG, ROUTE_PREFERENCE_OPTIONS } from '../config'
 
 interface RouteFormProps {
-  onSubmit: (request: any) => void
+  onSubmit: (request: RouteRequest) => void
   isLoading: boolean
 }
 
 const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
   const [origin, setOrigin] = useState('')
   const [destination, setDestination] = useState('')
-  const [preferences, setPreferences] = useState<string[]>(['fastest'])
-  const [transportModes, setTransportModes] = useState<string[]>(['walking', 'biking', 'car', 'bus'])
-  const [maxWalkingDistance, setMaxWalkingDistance] = useState(2000)
+  const [preferences, setPreferences] = useState<string[]>([...DEFAULT_PREFERENCES])
+  const [transportModes, setTransportModes] = useState<string[]>([...DEFAULT_TRANSPORT_MODES])
+  const [maxWalkingDistance, setMaxWalkingDistance] = useState<number>(WALKING_DISTANCE_CONFIG.DEFAULT)
 
-  const preferenceOptions = [
-    { value: 'fastest', label: 'Fastest', icon: Clock, color: 'from-red-500 to-pink-500' },
-    { value: 'safest', label: 'Safest', icon: Shield, color: 'from-green-500 to-emerald-500' },
-    { value: 'energy_efficient', label: 'Eco-Friendly', icon: Leaf, color: 'from-blue-500 to-cyan-500' },
-    { value: 'scenic', label: 'Scenic', icon: Mountain, color: 'from-yellow-500 to-orange-500' },
-    { value: 'healthy', label: 'Healthy', icon: Heart, color: 'from-purple-500 to-violet-500' },
-    { value: 'cheapest', label: 'Cheapest', icon: DollarSign, color: 'from-gray-500 to-slate-500' },
-  ]
+  const preferenceOptions = ROUTE_PREFERENCE_OPTIONS.map((option) => ({
+    ...option,
+    icon: {
+      fastest: Clock,
+      safest: Shield,
+      energy_efficient: Leaf,
+      scenic: Mountain,
+      healthy: Heart,
+      cheapest: DollarSign,
+    }[option.value] || Clock,
+  }))
 
 
   const handlePreferenceChange = (preference: string) => {
@@ -46,29 +51,20 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
     }
 
     // Mock coordinates for demo - in real app would geocode addresses
-    const mockCoordinates = {
-      'vancouver downtown': { lat: 49.2827, lng: -123.1207 },
-      'vancouver airport': { lat: 49.1967, lng: -123.1815 },
-      'stanley park': { lat: 49.3043, lng: -123.1443 },
-      'ubc': { lat: 49.2606, lng: -123.2460 },
-      'burnaby': { lat: 49.2488, lng: -122.9805 },
-      'richmond': { lat: 49.1666, lng: -123.1336 }
-    }
+    const originLower = origin.toLowerCase().trim()
+    const destinationLower = destination.toLowerCase().trim()
 
-    const originLower = origin.toLowerCase()
-    const destinationLower = destination.toLowerCase()
+    const originPoint = MOCK_COORDINATES[originLower] || MOCK_COORDINATES['vancouver downtown']
+    const destinationPoint = MOCK_COORDINATES[destinationLower] || MOCK_COORDINATES['vancouver airport']
 
-    const originPoint = mockCoordinates[originLower as keyof typeof mockCoordinates] || { lat: 49.2827, lng: -123.1207 }
-    const destinationPoint = mockCoordinates[destinationLower as keyof typeof mockCoordinates] || { lat: 49.1967, lng: -123.1815 }
-
-    const request = {
+    const request: RouteRequest = {
       origin: originPoint,
       destination: destinationPoint,
       preferences,
       transport_modes: transportModes,
       max_walking_distance: maxWalkingDistance,
       avoid_highways: false,
-      accessibility_requirements: []
+      accessibility_requirements: [],
     }
 
     onSubmit(request)
@@ -202,17 +198,17 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
         <div className="glass-card p-4">
           <input
             type="range"
-            min="500"
-            max="5000"
-            step="500"
+            min={WALKING_DISTANCE_CONFIG.MIN}
+            max={WALKING_DISTANCE_CONFIG.MAX}
+            step={WALKING_DISTANCE_CONFIG.STEP}
             value={maxWalkingDistance}
             onChange={(e) => setMaxWalkingDistance(Number(e.target.value))}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
           />
           <div className="flex justify-between text-xs text-gray-600 mt-2">
-            <span>500m</span>
+            <span>{WALKING_DISTANCE_CONFIG.MIN}m</span>
             <span className="font-semibold text-primary-600">{maxWalkingDistance}m</span>
-            <span>5000m</span>
+            <span>{WALKING_DISTANCE_CONFIG.MAX}m</span>
           </div>
         </div>
       </motion.div>

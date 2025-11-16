@@ -1,18 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react'
-
-export interface UserProfile {
-  user_id: string
-  preferred_modes: string[]
-  fitness_level: string
-  sustainability_goals: boolean
-  accessibility_needs: string[]
-  total_sustainability_points: number
-  level: number
-  achievements: string[]
-  badges: string[]
-  streak_days: number
-  total_distance_saved: number
-}
+import type { UserProfile } from '../types'
 
 interface UserState {
   profile: UserProfile
@@ -50,7 +37,7 @@ function userReducer(state: UserState, action: UserAction): UserState {
     case 'SET_PROFILE':
       return { ...state, profile: action.payload }
     case 'UPDATE_POINTS':
-      const newPoints = state.profile.total_sustainability_points + action.payload
+      const newPoints = (state.profile.total_sustainability_points || 0) + action.payload
       const newLevel = Math.floor(newPoints / 100) + 1
       return {
         ...state,
@@ -65,7 +52,7 @@ function userReducer(state: UserState, action: UserAction): UserState {
         ...state,
         profile: {
           ...state.profile,
-          achievements: [...state.profile.achievements, action.payload],
+          achievements: [...(state.profile.achievements || []), action.payload],
         },
       }
     case 'ADD_BADGE':
@@ -73,7 +60,7 @@ function userReducer(state: UserState, action: UserAction): UserState {
         ...state,
         profile: {
           ...state.profile,
-          badges: [...state.profile.badges, action.payload],
+          badges: [...(state.profile.badges || []), action.payload],
         },
       }
     case 'SET_AUTHENTICATED':

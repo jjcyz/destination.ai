@@ -1,43 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react'
-
-export interface Point {
-  lat: number
-  lng: number
-}
-
-export interface RouteStep {
-  mode: string
-  distance: number
-  estimated_time: number
-  slope?: number
-  effort_level: string
-  instructions: string
-  start_point: Point
-  end_point: Point
-  sustainability_points: number
-}
-
-export interface Route {
-  id: string
-  origin: Point
-  destination: Point
-  steps: RouteStep[]
-  total_distance: number
-  total_time: number
-  total_sustainability_points: number
-  preference: string
-  safety_score: number
-  energy_efficiency: number
-  scenic_score: number
-}
-
-export interface RouteResponse {
-  request_id: string
-  routes: Route[]
-  alternatives: Route[]
-  processing_time: number
-  data_sources: string[]
-}
+import type { Point, Route } from '../types'
 
 interface RouteState {
   currentRoutes: Route[]

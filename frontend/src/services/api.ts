@@ -1,23 +1,42 @@
-import axios from 'axios'
-
-const API_BASE_URL = 'http://localhost:8000/api/v1'
+import axios, { AxiosError } from 'axios'
+import type {
+  RouteRequest,
+  RouteResponse,
+  Point,
+  Route,
+  UserProfile,
+  GamificationRewards,
+  Achievement,
+  Badge,
+  DailyChallenge,
+  LeaderboardEntry,
+  ApiConfig,
+  HealthCheckResponse,
+} from '../types'
+import { API_CONFIG } from '../config'
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
+  baseURL: API_CONFIG.BASE_URL,
+  timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// Request interceptor for logging
+// Request interceptor for logging (development only)
 api.interceptors.request.use(
   (config) => {
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
+    }
     return config
   },
   (error) => {
-    console.error('API Request Error:', error)
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.error('API Request Error:', error)
+    }
     return Promise.reject(error)
   }
 )
@@ -25,48 +44,77 @@ api.interceptors.request.use(
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => {
-    console.log(`API Response: ${response.status} ${response.config.url}`)
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(`API Response: ${response.status} ${response.config.url}`)
+    }
     return response
   },
   (error) => {
-    console.error('API Response Error:', error.response?.data || error.message)
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.error('API Response Error:', error.response?.data || error.message)
+    }
     return Promise.reject(error)
   }
 )
 
+/**
+ * Extract error message from API error
+ */
+function getErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError<{ detail?: string }>
+    return axiosError.response?.data?.detail || error.message || 'An unknown error occurred'
+  }
+  if (error instanceof Error) {
+    return error.message
+  }
+  return 'An unknown error occurred'
+}
+
 export const routeAPI = {
-  // Calculate routes
-  async calculateRoute(request: any) {
+  /**
+   * Calculate routes between origin and destination
+   */
+  async calculateRoute(request: RouteRequest): Promise<RouteResponse> {
     try {
-      const response = await api.post('/route', request)
+      const response = await api.post<RouteResponse>('/route', request)
       return response.data
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Failed to calculate routes')
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
     }
   },
 
-  // Geocode address
-  async geocodeAddress(address: string) {
+  /**
+   * Geocode an address to coordinates
+   */
+  async geocodeAddress(address: string): Promise<Point> {
     try {
-      const response = await api.get('/route/geocode', {
-        params: { address }
+      const response = await api.get<Point>('/route/geocode', {
+        params: { address },
       })
       return response.data
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Failed to geocode address')
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
     }
   },
 
-  // Calculate gamification rewards
-  async calculateRewards(route: any, userProfile: any) {
+  /**
+   * Calculate gamification rewards for a completed route
+   */
+  async calculateRewards(route: Route, userProfile: UserProfile): Promise<GamificationRewards> {
     try {
-      const response = await api.post('/gamification/rewards', {
+      const response = await api.post<GamificationRewards>('/gamification/rewards', {
         route,
-        user_profile: userProfile
+        user_profile: userProfile,
       })
       return response.data
-    } catch (error: any) {
-      console.warn('Failed to calculate rewards:', error)
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to calculate rewards:', error)
+      }
       // Return mock rewards for demo
       return {
         sustainability_points: route.total_sustainability_points || 0,
@@ -74,86 +122,100 @@ export const routeAPI = {
         achievements_unlocked: [],
         badges_earned: [],
         level_up: false,
-        streak_bonus: 0
+        streak_bonus: 0,
       }
     }
-  }
+  },
 }
 
 export const gamificationAPI = {
-  // Get achievements
-  async getAchievements() {
+  /**
+   * Get all available achievements
+   */
+  async getAchievements(): Promise<{ achievements: Achievement[] }> {
     try {
-      const response = await api.get('/gamification/achievements')
+      const response = await api.get<{ achievements: Achievement[] }>('/gamification/achievements')
       return response.data
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Failed to fetch achievements')
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
     }
   },
 
-  // Get badges
-  async getBadges() {
+  /**
+   * Get all available badges
+   */
+  async getBadges(): Promise<{ badges: Badge[] }> {
     try {
-      const response = await api.get('/gamification/badges')
+      const response = await api.get<{ badges: Badge[] }>('/gamification/badges')
       return response.data
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Failed to fetch badges')
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
     }
   },
 
-  // Get daily challenges
-  async getDailyChallenges() {
+  /**
+   * Get daily challenges
+   */
+  async getDailyChallenges(): Promise<{ challenges: DailyChallenge[] }> {
     try {
-      const response = await api.get('/gamification/challenges')
+      const response = await api.get<{ challenges: DailyChallenge[] }>('/gamification/challenges')
       return response.data
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Failed to fetch challenges')
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
     }
   },
 
-  // Get leaderboard
-  async getLeaderboard(limit: number = 10) {
+  /**
+   * Get leaderboard data
+   */
+  async getLeaderboard(limit: number = 10): Promise<{ leaderboard: LeaderboardEntry[] }> {
     try {
-      const response = await api.get('/gamification/leaderboard', {
-        params: { limit }
+      const response = await api.get<{ leaderboard: LeaderboardEntry[] }>('/gamification/leaderboard', {
+        params: { limit },
       })
       return response.data
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Failed to fetch leaderboard')
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
     }
   },
 
-  // Get sustainability tips
-  async getSustainabilityTips() {
+  /**
+   * Get sustainability tips
+   */
+  async getSustainabilityTips(): Promise<{ tips: string[] }> {
     try {
-      const response = await api.get('/gamification/tips')
+      const response = await api.get<{ tips: string[] }>('/gamification/tips')
       return response.data
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Failed to fetch tips')
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
     }
-  }
+  },
 }
 
 export const configAPI = {
-  // Get API configuration
-  async getConfig() {
+  /**
+   * Get API configuration and instructions
+   */
+  async getConfig(): Promise<ApiConfig> {
     try {
-      const response = await api.get('/config')
+      const response = await api.get<ApiConfig>('/config')
       return response.data
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Failed to fetch config')
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
     }
   },
 
-  // Health check
-  async healthCheck() {
+  /**
+   * Health check endpoint
+   */
+  async healthCheck(): Promise<HealthCheckResponse> {
     try {
-      const response = await api.get('/health')
+      const response = await api.get<HealthCheckResponse>('/health')
       return response.data
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Health check failed')
+    } catch (error) {
+      throw new Error(getErrorMessage(error))
     }
-  }
+  },
 }
 
 export default api

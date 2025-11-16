@@ -25,8 +25,11 @@ const Dashboard: React.FC = () => {
         setChallenges(challengesData.challenges || [])
         setTips(tipsData.tips?.map((tip: any) => tip.description || tip.title || tip) || [])
       } catch (error) {
-        console.log('Backend not available, using demo data:', error.message)
         // Use mock data for demo when backend is not available
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.log('Backend not available, using demo data:', error instanceof Error ? error.message : 'Unknown error')
+        }
         setChallenges([
           {
             id: 'daily_walk',

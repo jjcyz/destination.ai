@@ -51,7 +51,8 @@ const PredictiveNotifications: React.FC<PredictiveNotificationsProps> = ({
         actionable: true,
         actionText: 'Find Alternative',
         onAction: () => {
-          // TODO: Implement alternative route finding
+          // Navigate to route planner to find alternatives
+          window.location.href = '/'
         }
       },
       {
@@ -83,7 +84,8 @@ const PredictiveNotifications: React.FC<PredictiveNotificationsProps> = ({
         actionable: true,
         actionText: 'View Details',
         onAction: () => {
-          // TODO: Implement safety details viewing
+          // Show safety details (can be expanded later)
+          alert('Construction zone on Robson St. Please exercise caution.')
         }
       }
     ]

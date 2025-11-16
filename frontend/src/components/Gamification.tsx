@@ -23,8 +23,11 @@ const Gamification: React.FC = () => {
         setBadges(badgesData.badges || [])
         setLeaderboard(leaderboardData.leaderboard || [])
       } catch (error) {
-        console.error('Failed to load gamification data:', error)
         // Use mock data for demo
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.error('Failed to load gamification data:', error)
+        }
         setAchievements([
           {
             id: 'first_steps',
