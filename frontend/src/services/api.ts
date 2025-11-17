@@ -28,14 +28,14 @@ api.interceptors.request.use(
   (config) => {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
-      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
+    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
     }
     return config
   },
   (error) => {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
-      console.error('API Request Error:', error)
+    console.error('API Request Error:', error)
     }
     return Promise.reject(error)
   }
@@ -46,14 +46,14 @@ api.interceptors.response.use(
   (response) => {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
-      console.log(`API Response: ${response.status} ${response.config.url}`)
+    console.log(`API Response: ${response.status} ${response.config.url}`)
     }
     return response
   },
   (error) => {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
-      console.error('API Response Error:', error.response?.data || error.message)
+    console.error('API Response Error:', error.response?.data || error.message)
     }
     return Promise.reject(error)
   }
@@ -113,7 +113,7 @@ export const routeAPI = {
     } catch (error) {
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
-        console.warn('Failed to calculate rewards:', error)
+      console.warn('Failed to calculate rewards:', error)
       }
       // Return mock rewards for demo
       return {

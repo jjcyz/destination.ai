@@ -79,6 +79,7 @@ export interface RouteStep {
   instructions: string
   start_point: Point
   end_point: Point
+  polyline?: string  // Google Maps encoded polyline for accurate route rendering
   sustainability_points: number
   transit_details?: TransitDetails
 }

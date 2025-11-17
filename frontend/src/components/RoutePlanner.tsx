@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRoute } from '../contexts/RouteContext'
 import { useUser } from '../contexts/UserContext'
-import MapView from './MapView'
+import GoogleMapView from './GoogleMapView'
 import RouteForm from './RouteForm'
 import RealTimePanel from './RealTimePanel'
 import AlternativeRoutes from './AlternativeRoutes'
@@ -139,11 +139,31 @@ const RoutePlanner: React.FC = () => {
                 transition={{ duration: 0.3 }}
                 className="h-[500px] sm:h-[600px] lg:h-[800px] xl:h-[900px] min-h-[200px]"
               >
-                <MapView
-                  routes={routeState.currentRoutes}
-                  selectedRoute={routeState.selectedRoute}
-                  lastRequest={routeState.lastRequest}
-                />
+                {(() => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const env = (import.meta as any).env
+                  const googleMapsApiKey = env?.VITE_GOOGLE_MAPS_API_KEY
+
+                  // Use Google Maps if API key is available, otherwise fallback to Leaflet
+                  if (googleMapsApiKey) {
+                    return (
+                      <GoogleMapView
+                        routes={routeState.currentRoutes}
+                        selectedRoute={routeState.selectedRoute}
+                        lastRequest={routeState.lastRequest}
+                        apiKey={googleMapsApiKey}
+                      />
+                    )
+                  }
+
+                  return (
+                    <MapView
+                      routes={routeState.currentRoutes}
+                      selectedRoute={routeState.selectedRoute}
+                      lastRequest={routeState.lastRequest}
+                    />
+                  )
+                })()}
               </motion.div>
             )}
           </AnimatePresence>

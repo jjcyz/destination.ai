@@ -5,6 +5,12 @@
 .env.staging
 *.env
 
+# Frontend environment variables (Vite)
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+frontend/.env.staging
+
 # Python
 __pycache__/
 *.py[cod]
@@ -112,12 +118,9 @@ Thumbs.db
 
 # GTFS files (Downloaded from TransLink)
 gtfs/*.txt
-gtfs/*.csv
 
 # Deployment
 .vercel/
-.netlify/
-.firebase/
 
 # Documentation build
 docs/_build/

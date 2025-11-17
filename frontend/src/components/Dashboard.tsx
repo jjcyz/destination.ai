@@ -8,14 +8,12 @@ const Dashboard: React.FC = () => {
   const [challenges, setChallenges] = useState<any[]>([])
   const [tips, setTips] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Load dashboard data
     const loadDashboardData = async () => {
       try {
         setIsLoading(true)
-        setError(null)
 
         const [challengesData, tipsData] = await Promise.all([
           gamificationAPI.getDailyChallenges(),
@@ -71,7 +69,8 @@ const Dashboard: React.FC = () => {
     loadDashboardData()
   }, [])
 
-  const progressToNextLevel = (userState.profile.total_sustainability_points % 100)
+  const totalPoints = userState.profile.total_sustainability_points || 0
+  const progressToNextLevel = totalPoints % 100
   const pointsNeeded = 100 - progressToNextLevel
 
   if (isLoading) {
@@ -87,7 +86,7 @@ const Dashboard: React.FC = () => {
 
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 space-y-6">
       {/* Page Header */}
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -107,7 +106,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Level</p>
-              <p className="text-2xl font-bold text-gray-900">{userState.profile.level}</p>
+              <p className="text-2xl font-bold text-gray-900">{userState.profile.level || 1}</p>
             </div>
           </div>
         </div>
@@ -119,7 +118,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Sustainability Points</p>
-              <p className="text-2xl font-bold text-gray-900">{userState.profile.total_sustainability_points}</p>
+              <p className="text-2xl font-bold text-gray-900">{totalPoints}</p>
             </div>
           </div>
         </div>
@@ -131,7 +130,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">CO2 Saved</p>
-              <p className="text-2xl font-bold text-gray-900">{userState.profile.total_distance_saved.toFixed(1)} kg</p>
+              <p className="text-2xl font-bold text-gray-900">{((userState.profile.total_distance_saved || 0) / 1000).toFixed(1)} kg</p>
             </div>
           </div>
         </div>
@@ -143,7 +142,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Achievements</p>
-              <p className="text-2xl font-bold text-gray-900">{userState.profile.achievements.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{(userState.profile.achievements || []).length}</p>
             </div>
           </div>
         </div>
@@ -154,7 +153,7 @@ const Dashboard: React.FC = () => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Level Progress</h3>
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Progress to Level {userState.profile.level + 1}</span>
+            <span className="text-gray-600">Progress to Level {(userState.profile.level || 1) + 1}</span>
             <span className="text-gray-900">{progressToNextLevel}/100 points</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">

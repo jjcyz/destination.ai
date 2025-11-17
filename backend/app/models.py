@@ -124,6 +124,7 @@ class RouteStep(BaseModel):
     instructions: str
     start_point: Point
     end_point: Point
+    polyline: Optional[str] = Field(None, description="Google Maps encoded polyline for accurate route rendering")
     transit_details: Optional[Dict[str, Any]] = None  # For transit steps
     sustainability_points: int = Field(default=0)
 

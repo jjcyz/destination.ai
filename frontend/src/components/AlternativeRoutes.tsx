@@ -11,7 +11,7 @@ import {
   Navigation
 } from 'lucide-react'
 import { cn } from '../utils/cn'
-import { Route } from '../contexts/RouteContext'
+import type { Route } from '../types'
 import TransitStep from './TransitStep'
 
 interface AlternativeRoutesProps {
@@ -246,49 +246,49 @@ const AlternativeRoutes: React.FC<AlternativeRoutesProps> = ({
 
                             // Regular step (walking, biking, car, etc.)
                             return (
-                              <div
-                                key={stepIndex}
-                                className="flex items-center justify-between p-3 bg-white/40 rounded-lg hover:bg-white/60 transition-colors"
-                              >
-                                <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                  <div className={cn(
-                                    "w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm flex-shrink-0",
-                                    `mode-${step.mode}`
-                                  )}>
-                                    {step.mode === 'walking' && '🚶'}
-                                    {step.mode === 'biking' && '🚴'}
-                                    {step.mode === 'scooter' && '🛴'}
-                                    {step.mode === 'car' && '🚗'}
-                                    {step.mode === 'bus' && '🚌'}
-                                    {step.mode === 'skytrain' && '🚇'}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-gray-900 text-sm sm:text-base truncate">
-                                      {step.instructions || `Continue ${formatDistance(step.distance)}`}
-                                    </div>
-                                    <div className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                                      <span className="capitalize">{step.mode}</span>
-                                      {step.distance > 0 && (
-                                        <>
-                                          <span className="mx-1">•</span>
-                                          {formatDistance(step.distance)}
-                                        </>
-                                      )}
-                                      {step.sustainability_points > 0 && (
-                                        <>
-                                          <span className="mx-1">•</span>
-                                          <span className="text-green-600 font-medium">
-                                            +{step.sustainability_points} pts
-                                          </span>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
+                            <div
+                              key={stepIndex}
+                              className="flex items-center justify-between p-3 bg-white/40 rounded-lg hover:bg-white/60 transition-colors"
+                            >
+                              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                <div className={cn(
+                                  "w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm flex-shrink-0",
+                                  `mode-${step.mode}`
+                                )}>
+                                  {step.mode === 'walking' && '🚶'}
+                                  {step.mode === 'biking' && '🚴'}
+                                  {step.mode === 'scooter' && '🛴'}
+                                  {step.mode === 'car' && '🚗'}
+                                  {step.mode === 'bus' && '🚌'}
+                                  {step.mode === 'skytrain' && '🚇'}
                                 </div>
-                                <div className="text-xs sm:text-sm text-gray-600 ml-3 flex-shrink-0">
-                                  {formatTime(step.estimated_time)}
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-gray-900 text-sm sm:text-base truncate">
+                                    {step.instructions || `Continue ${formatDistance(step.distance)}`}
+                                  </div>
+                                  <div className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                                    <span className="capitalize">{step.mode}</span>
+                                    {step.distance > 0 && (
+                                      <>
+                                        <span className="mx-1">•</span>
+                                        {formatDistance(step.distance)}
+                                      </>
+                                    )}
+                                    {step.sustainability_points > 0 && (
+                                      <>
+                                        <span className="mx-1">•</span>
+                                        <span className="text-green-600 font-medium">
+                                          +{step.sustainability_points} pts
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
+                              <div className="text-xs sm:text-sm text-gray-600 ml-3 flex-shrink-0">
+                                {formatTime(step.estimated_time)}
+                              </div>
+                            </div>
                             )
                           })}
                         </div>

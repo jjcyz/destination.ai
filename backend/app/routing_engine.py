@@ -895,6 +895,11 @@ class RoutingEngine:
                         lng=end_location.get("lng", request.destination.lng)
                     )
 
+                    # Extract polyline for accurate route rendering
+                    step_polyline = None
+                    if step.get("polyline"):
+                        step_polyline = step.get("polyline", {}).get("points", None)
+
                     # Get step instructions
                     instructions = step.get("html_instructions", "")
                     # Remove HTML tags
@@ -1072,7 +1077,7 @@ class RoutingEngine:
                                             "header": alert.get("header_text", ""),
                                             "description": alert.get("description_text", ""),
                                             "effect": alert.get("effect"),
-                                        }
+                            }
                                         for alert in route_alerts
                                     ]
 
@@ -1085,6 +1090,7 @@ class RoutingEngine:
                         instructions=instructions or f"Continue {step_distance/1000:.1f}km",
                         start_point=start_point,
                         end_point=end_point,
+                        polyline=step_polyline,  # Include polyline for accurate rendering
                         transit_details=transit_details,
                         sustainability_points=sustainability_points
                     )
