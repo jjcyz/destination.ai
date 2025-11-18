@@ -107,7 +107,10 @@ const AlternativeRoutes: React.FC<AlternativeRoutesProps> = ({
           <span className="text-sm text-gray-500">Sort by:</span>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => {
+              const value = e.target.value as 'time' | 'distance' | 'sustainability' | 'cost'
+              setSortBy(value)
+            }}
             className="text-sm bg-white/60 border border-white/40 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
           >
             <option value="time">Time</option>

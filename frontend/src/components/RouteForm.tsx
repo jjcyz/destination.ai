@@ -55,7 +55,7 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
     }
 
     try {
-      // Geocode the address (can be from predefined list or Google Places)
+      // Geocode the address using Google Places API
       const point = await routeAPI.geocodeAddress(address)
 
       // Validate that we got valid coordinates
@@ -290,7 +290,7 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
                 <h3 className="text-sm font-medium text-red-800 mb-1">Geocoding Error</h3>
                 <p className="text-sm text-red-700 mb-2">{geocodingError}</p>
                 <p className="text-xs text-red-600">
-                  Please select addresses from the dropdown above. All addresses are validated Vancouver locations.
+                  Please select addresses from the dropdown above.
                 </p>
               </div>
             </div>

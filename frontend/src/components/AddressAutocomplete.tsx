@@ -76,9 +76,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     debounceTimerRef.current = setTimeout(() => {
       const request: google.maps.places.AutocompletionRequest = {
         input: searchQuery,
-        // Use 'geocode' type which includes both addresses and establishments
-        // Note: 'address' type cannot be mixed with 'establishment' in new Places API
-        types: ['geocode'], // This includes addresses, establishments, and other place types
+        types: ['geocode'], // Includes addresses and establishments
         location: new google.maps.LatLng(49.2827, -123.1207), // Vancouver center
         radius: 50000, // 50km radius around Vancouver
         componentRestrictions: { country: 'ca' }, // Restrict to Canada
@@ -337,8 +335,8 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
                   <p className="mb-2">No addresses found for "{searchQuery}"</p>
                   <p className="text-xs text-gray-500 mb-2">
                     {isGoogleMapsLoaded
-                      ? 'Try a different address or select from the suggestions above.'
-                      : 'Please select from the dropdown or try a different search term.'}
+                      ? 'Try a different address or check your spelling.'
+                      : 'Please wait for Google Maps to load or try a different search term.'}
                   </p>
                   {import.meta.env.DEV && (
                     <div className="text-xs text-gray-400 mt-2 pt-2 border-t border-white/20">

@@ -125,14 +125,9 @@ RealTimePanel (extracts delays/alerts)
 
 ##WISHLIST
 - [ ] Search business names
+- [ ] Add "Use Current Location" button
+- [ ] Add Saved locations section: Home, School, and other customizables
 ### Error Boundary
 - [ ] Integrate with Sentry for error tracking
 - [ ] Add error reporting form
 - [ ] Track error frequency and types
-
-### Geocoding
-- [ ] Add address autocomplete (Google Places API)
-- [ ] Cache geocoded addresses
-- [ ] Validate addresses are in Vancouver bounds
-- [ ] Show address suggestions as user types
-- [ ] Add "Use Current Location" button
