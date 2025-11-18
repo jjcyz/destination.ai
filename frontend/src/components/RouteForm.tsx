@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Search, MapPin, Settings, Navigation, Clock, Shield, Leaf, Mountain, Heart, DollarSign, AlertCircle } from 'lucide-react'
+import { Search, MapPin, Settings, Navigation, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../utils/cn'
 import ModeSelector from './ModeSelector'
@@ -7,6 +7,7 @@ import AddressAutocomplete from './AddressAutocomplete'
 import type { RouteRequest, Point } from '../types'
 import { DEFAULT_PREFERENCES, DEFAULT_TRANSPORT_MODES, WALKING_DISTANCE_CONFIG, ROUTE_PREFERENCE_OPTIONS } from '../config'
 import { routeAPI } from '../services/api'
+import { getPreferenceIconAlt } from '../utils/routePreferences'
 
 interface RouteFormProps {
   onSubmit: (request: RouteRequest) => void
@@ -26,14 +27,7 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
 
   const preferenceOptions = ROUTE_PREFERENCE_OPTIONS.map((option) => ({
     ...option,
-    icon: {
-      fastest: Clock,
-      safest: Shield,
-      energy_efficient: Leaf,
-      scenic: Mountain,
-      healthy: Heart,
-      cheapest: DollarSign,
-    }[option.value] || Clock,
+    icon: getPreferenceIconAlt(option.value),
   }))
 
 

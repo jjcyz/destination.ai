@@ -1,18 +1,11 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Clock,
-  MapPin,
-  TrendingUp,
-  Leaf,
-  Shield,
-  DollarSign,
-  ChevronDown,
-  Navigation
-} from 'lucide-react'
+import { ChevronDown, Clock, MapPin } from 'lucide-react'
 import { cn } from '../utils/cn'
 import type { Route } from '../types'
 import TransitStep from './TransitStep'
+import { getPreferenceIcon, getRouteColorGradient } from '../utils/routePreferences'
+import { formatTime, formatDistance } from '../utils/formatting'
 
 interface AlternativeRoutesProps {
   routes: Route[]
@@ -30,46 +23,6 @@ const AlternativeRoutes: React.FC<AlternativeRoutesProps> = ({
   const [expandedRoute, setExpandedRoute] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<'time' | 'distance' | 'sustainability' | 'cost'>('time')
 
-  const getPreferenceIcon = (preference: string) => {
-    const icons = {
-      fastest: Clock,
-      safest: Shield,
-      energy_efficient: Leaf,
-      scenic: MapPin,
-      healthy: TrendingUp,
-      cheapest: DollarSign,
-    }
-    return icons[preference as keyof typeof icons] || Navigation
-  }
-
-  const getPreferenceColor = (preference: string) => {
-    const colors = {
-      fastest: 'from-red-500 to-pink-500',
-      safest: 'from-green-500 to-emerald-500',
-      energy_efficient: 'from-blue-500 to-cyan-500',
-      scenic: 'from-yellow-500 to-orange-500',
-      healthy: 'from-purple-500 to-violet-500',
-      cheapest: 'from-gray-500 to-slate-500',
-    }
-    return colors[preference as keyof typeof colors] || 'from-gray-500 to-slate-500'
-  }
-
-  const formatTime = (seconds: number) => {
-    // Convert seconds to minutes (backend returns time in seconds)
-    if (seconds < 60) {
-      return `${seconds}s`
-    }
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m`
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
-
-  const formatDistance = (meters: number) => {
-    if (meters < 1000) return `${meters}m`
-    return `${(meters / 1000).toFixed(1)}km`
-  }
 
   const sortedRoutes = [...routes].sort((a, b) => {
     switch (sortBy) {
@@ -127,7 +80,7 @@ const AlternativeRoutes: React.FC<AlternativeRoutesProps> = ({
           {sortedRoutes.map((route, index) => {
             const isSelected = selectedRoute?.id === route.id
             const isExpanded = expandedRoute === route.id
-            const PreferenceIcon = getPreferenceIcon(route.preference)
+            const PreferenceIcon = getPreferenceIcon(route.preference as string)
 
             return (
               <motion.div
@@ -149,7 +102,7 @@ const AlternativeRoutes: React.FC<AlternativeRoutesProps> = ({
                   <div className="flex items-center space-x-3">
                     <div className={cn(
                       "w-10 h-10 rounded-xl flex items-center justify-center text-white",
-                      `bg-gradient-to-br ${getPreferenceColor(route.preference)}`
+                      `bg-gradient-to-br ${getRouteColorGradient(route.preference as string)}`
                     )}>
                       <PreferenceIcon className="w-5 h-5" />
                     </div>

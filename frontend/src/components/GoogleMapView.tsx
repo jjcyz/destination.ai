@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { GoogleMap, Polyline, Marker, InfoWindow } from '@react-google-maps/api'
 import type { Route } from '../types'
 import { useGoogleMaps } from '../contexts/GoogleMapsContext'
+import { getRouteColorHex } from '../utils/routePreferences'
 
 interface GoogleMapViewProps {
   routes: Route[]
@@ -34,18 +35,6 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
   // Vancouver center coordinates
   const vancouverCenter = { lat: 49.2827, lng: -123.1207 }
 
-  // Get route color based on preference
-  const getRouteColor = (preference: string): string => {
-    const colors: { [key: string]: string } = {
-      fastest: '#ef4444',
-      safest: '#22c55e',
-      energy_efficient: '#3b82f6',
-      scenic: '#f59e0b',
-      healthy: '#10b981',
-      cheapest: '#8b5cf6',
-    }
-    return colors[preference] || '#6b7280'
-  }
 
   // Decode Google Maps polyline
   const decodePolyline = (encoded: string): google.maps.LatLng[] => {
@@ -141,7 +130,11 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
 
   useEffect(() => {
     if (mapLoaded && routes.length > 0) {
-      setTimeout(fitBounds, 100)
+      const timeoutId = setTimeout(fitBounds, 100)
+      // Cleanup: clear timeout if component unmounts or dependencies change
+      return () => {
+        clearTimeout(timeoutId)
+      }
     }
   }, [mapLoaded, routes, fitBounds])
 
@@ -151,7 +144,25 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
   }, [])
 
   const onUnmount = useCallback(() => {
-    mapRef.current = null
+    // Cleanup: clear map reference and reset state
+    if (mapRef.current) {
+      // Clear any event listeners or custom overlays if needed
+      mapRef.current = null
+    }
+    setMapLoaded(false)
+    setSelectedInfoWindow(null)
+  }, [])
+
+  // Cleanup effect: ensure proper cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup on component unmount
+      if (mapRef.current) {
+        mapRef.current = null
+      }
+      setMapLoaded(false)
+      setSelectedInfoWindow(null)
+    }
   }, [])
 
   // Show error if Google Maps failed to load
@@ -259,7 +270,7 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
         {/* Route Polylines */}
         {routes.map((route: Route) => {
           const isSelected = selectedRoute?.id === route.id
-          const routeColor = getRouteColor(route.preference as string)
+          const routeColor = getRouteColorHex(route.preference as string)
           const opacity = isSelected ? 0.9 : 0.5
           const weight = isSelected ? 8 : 4
 
@@ -344,7 +355,7 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
                 <div key={route.id} className="flex items-center space-x-3">
                   <div
                     className="w-5 h-1.5 rounded-full"
-                    style={{ backgroundColor: getRouteColor(route.preference as string) }}
+                    style={{ backgroundColor: getRouteColorHex(route.preference as string) }}
                   />
                   <span className="text-sm text-gray-700 capitalize flex-1">
                     {route.preference.replace('_', ' ')}

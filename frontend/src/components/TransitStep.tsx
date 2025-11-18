@@ -2,6 +2,7 @@ import React from 'react'
 import { Clock, AlertTriangle, Bus, Train, MapPin, ArrowRight } from 'lucide-react'
 import { cn } from '../utils/cn'
 import type { TransitDetails } from '../types'
+import { formatTimeString } from '../utils/formatting'
 
 interface TransitStepProps {
   transitDetails: TransitDetails
@@ -14,23 +15,6 @@ const TransitStep: React.FC<TransitStepProps> = ({
   estimatedTime,
   className
 }) => {
-  const formatTime = (timeString?: string) => {
-    if (!timeString) return null
-    // Handle both "2:45 PM" and ISO format
-    try {
-      const date = new Date(timeString)
-      if (!isNaN(date.getTime())) {
-        return date.toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        })
-      }
-      return timeString
-    } catch {
-      return timeString
-    }
-  }
 
   const getVehicleIcon = (vehicleType?: string) => {
     const type = vehicleType?.toLowerCase() || ''
@@ -86,7 +70,7 @@ const TransitStep: React.FC<TransitStepProps> = ({
             <div className="flex items-center space-x-2 mt-2">
               <Clock className="w-4 h-4 text-gray-500" />
               <span className="text-sm text-gray-700">
-                Departs: {formatTime(transitDetails.departure_time) || transitDetails.departure_time}
+                Departs: {formatTimeString(transitDetails.departure_time) || transitDetails.departure_time}
               </span>
               {hasDelay && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">
@@ -106,7 +90,7 @@ const TransitStep: React.FC<TransitStepProps> = ({
             <div className="flex items-center space-x-2 mt-1">
               <Clock className="w-4 h-4 text-gray-500" />
               <span className="text-sm text-gray-700">
-                Arrives: {formatTime(transitDetails.arrival_time) || transitDetails.arrival_time}
+                Arrives: {formatTimeString(transitDetails.arrival_time) || transitDetails.arrival_time}
               </span>
             </div>
           )}
