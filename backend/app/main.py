@@ -139,10 +139,27 @@ async def calculate_route(request: RouteRequest):
         # Check if points are within Vancouver bounds (skip in demo mode)
         api_keys_status = validate_api_keys()
         if api_keys_status["all_required"]:
-            if not _is_within_vancouver_bounds(request.origin) or not _is_within_vancouver_bounds(request.destination):
+            origin_in_bounds = _is_within_vancouver_bounds(request.origin)
+            dest_in_bounds = _is_within_vancouver_bounds(request.destination)
+
+            if not origin_in_bounds or not dest_in_bounds:
+                bounds = settings.vancouver_bounds
+                error_details = []
+                if not origin_in_bounds:
+                    error_details.append(
+                        f"Origin ({request.origin.lat}, {request.origin.lng}) is outside Vancouver bounds "
+                        f"(lat: {bounds['south']}-{bounds['north']}, lng: {bounds['west']}-{bounds['east']})"
+                    )
+                if not dest_in_bounds:
+                    error_details.append(
+                        f"Destination ({request.destination.lat}, {request.destination.lng}) is outside Vancouver bounds "
+                        f"(lat: {bounds['south']}-{bounds['north']}, lng: {bounds['west']}-{bounds['east']})"
+                    )
+
+                logger.warning(f"Route request outside bounds: {', '.join(error_details)}")
                 raise HTTPException(
                     status_code=400,
-                    detail="Origin and destination must be within Vancouver city limits"
+                    detail=f"Origin and destination must be within Vancouver city limits. {', '.join(error_details)}"
                 )
 
         # Calculate routes

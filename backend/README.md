@@ -37,7 +37,7 @@ pip install -r requirements.txt
 ```env
 GOOGLE_MAPS_API_KEY=your_key_here
 OPENWEATHER_API_KEY=your_key_here
-# ... other keys
+TRANS
 ```
 
 ## Running

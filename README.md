@@ -59,7 +59,7 @@ Copy `env.example` to `.env` and add your API keys:
 ```env
 GOOGLE_MAPS_API_KEY=your_key_here
 OPENWEATHER_API_KEY=your_key_here
-TRANSLINK_API_KEY=your_key_here  
+TRANSLINK_API_KEY=your_key_here
 LIME_API_KEY=your_key_here       # Optional
 ```
 
@@ -96,3 +96,43 @@ curl -X POST "http://localhost:8000/api/v1/route" \
 
 - **Backend:** See `backend/README.md`
 - **Frontend:** See `frontend/README.md`
+
+## Data Flow
+
+```
+Backend (GTFS-RT)
+  ↓
+Route Calculation
+  ↓
+transit_details with:
+  - delay_minutes
+  - is_delayed
+  - service_alerts
+  ↓
+Frontend API Response
+  ↓
+RouteContext
+  ↓
+AlternativeRoutes Component
+  ↓
+TransitStep Component (displays transit details)
+  ↓
+RealTimePanel (extracts delays/alerts)
+
+##GTFS static feed
+   - Stops: 5000+
+   - Routes: 200+
+
+##WISHLIST
+- [ ] Search business names
+### Error Boundary
+- [ ] Integrate with Sentry for error tracking
+- [ ] Add error reporting form
+- [ ] Track error frequency and types
+
+### Geocoding
+- [ ] Add address autocomplete (Google Places API)
+- [ ] Cache geocoded addresses
+- [ ] Validate addresses are in Vancouver bounds
+- [ ] Show address suggestions as user types
+- [ ] Add "Use Current Location" button

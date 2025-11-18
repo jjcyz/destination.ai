@@ -76,13 +76,33 @@ function getErrorMessage(error: unknown): string {
 export const routeAPI = {
   /**
    * Calculate routes between origin and destination
+   * Uses longer timeout for route calculation which can take time
    */
   async calculateRoute(request: RouteRequest): Promise<RouteResponse> {
     try {
-      const response = await api.post<RouteResponse>('/route', request)
+      // Route calculation should complete quickly (within 5 seconds)
+      // Allow 10 seconds total to account for network latency
+      const response = await api.post<RouteResponse>('/route', request, {
+        timeout: 10000, // 10 seconds - route calculation should take ~5 seconds
+      })
       return response.data
     } catch (error) {
-      throw new Error(getErrorMessage(error))
+      const errorMessage = getErrorMessage(error)
+
+      // Provide more helpful error messages
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          throw new Error(
+            'Route calculation timed out. The request took longer than expected. ' +
+            'This may indicate slow API responses or network issues. Please try again.'
+          )
+        }
+        if (error.response?.status === 503) {
+          throw new Error('Backend service is unavailable. Please check if the server is running.')
+        }
+      }
+
+      throw new Error(errorMessage)
     }
   },
 

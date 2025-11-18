@@ -38,4 +38,3 @@ npm run preview
 The frontend connects to the backend API at `http://localhost:8000/api/v1` by default. This can be configured via:
 - Environment variable: `VITE_API_BASE_URL`
 - Vite proxy configuration in `vite.config.ts`
-

@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { GoogleMap, LoadScript, Polyline, Marker, InfoWindow } from '@react-google-maps/api'
+import { GoogleMap, Polyline, Marker, InfoWindow } from '@react-google-maps/api'
 import type { Route } from '../types'
-
-// Libraries needed for Google Maps
-const libraries: ('places' | 'drawing' | 'geometry' | 'visualization')[] = ['geometry']
+import { useGoogleMaps } from '../contexts/GoogleMapsContext'
 
 interface GoogleMapViewProps {
   routes: Route[]
@@ -22,9 +20,16 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
   lastRequest,
   apiKey
 }) => {
+  const { isLoaded: isGoogleMapsLoaded, loadError } = useGoogleMaps()
   const mapRef = useRef<google.maps.Map | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [selectedInfoWindow, setSelectedInfoWindow] = useState<number | null>(null)
+
+  const containerStyle = {
+    width: '100%',
+    height: '100%',
+    minHeight: '200px'
+  }
 
   // Vancouver center coordinates
   const vancouverCenter = { lat: 49.2827, lng: -123.1207 }
@@ -149,11 +154,28 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
     mapRef.current = null
   }, [])
 
-  // Map container styles
-  const containerStyle = {
-    width: '100%',
-    height: '100%',
-    minHeight: '200px'
+  // Show error if Google Maps failed to load
+  if (loadError) {
+    return (
+      <div style={containerStyle} className="flex items-center justify-center bg-gray-100 rounded-xl">
+        <div className="text-center">
+          <p className="text-red-600 font-medium">Failed to load Google Maps</p>
+          <p className="text-gray-500 text-sm mt-2">{loadError.message}</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show loading state while Google Maps is loading
+  if (!isGoogleMapsLoaded) {
+    return (
+      <div style={containerStyle} className="flex items-center justify-center bg-gray-100 rounded-xl">
+        <div className="text-center">
+          <div className="loading-spinner mx-auto mb-4" />
+          <p className="text-gray-600">Loading Google Maps...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!apiKey) {
@@ -168,28 +190,20 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
   }
 
   return (
-    <LoadScript
-      googleMapsApiKey={apiKey}
-      libraries={libraries}
-      loadingElement={<div className="flex items-center justify-center h-full"><div className="loading-spinner" /></div>}
-      onError={(error) => {
-        console.error('Google Maps LoadScript error:', error)
+    <GoogleMap
+      mapContainerStyle={containerStyle}
+      center={vancouverCenter}
+      zoom={12}
+      onLoad={onLoad}
+      onUnmount={onUnmount}
+      options={{
+        zoomControl: true,
+        streetViewControl: false,
+        mapTypeControl: false,
+        fullscreenControl: true,
+        disableDefaultUI: false,
       }}
     >
-      <GoogleMap
-        mapContainerStyle={containerStyle}
-        center={vancouverCenter}
-        zoom={12}
-        onLoad={onLoad}
-        onUnmount={onUnmount}
-        options={{
-          zoomControl: true,
-          streetViewControl: false,
-          mapTypeControl: false,
-          fullscreenControl: true,
-          disableDefaultUI: false,
-        }}
-      >
         {/* Origin Marker */}
         {lastRequest?.origin && (
           <Marker
@@ -359,7 +373,6 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
           </div>
         )}
       </GoogleMap>
-    </LoadScript>
   )
 }
 

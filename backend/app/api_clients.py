@@ -26,7 +26,7 @@ class GoogleMapsClient:
     def __init__(self):
         self.api_key = settings.google_maps_api_key
         self.base_url = settings.google_maps_base_url
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = httpx.AsyncClient(timeout=5.0)  # Reduced from 30s to 5s for faster failures
 
     async def get_elevation(self, points: List[Point]) -> List[float]:
         """Get elevation data for a list of points."""
@@ -205,7 +205,7 @@ class TransLinkClient:
     def __init__(self):
         self.api_key = settings.translink_api_key
         self.base_url = settings.translink_base_url
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = httpx.AsyncClient(timeout=5.0)  # Reduced from 30s to 5s for faster failures
         self.parser = GTFSRTParser()
         self.gtfs_static = GTFSStaticParser()  # For stop name to ID mapping
 
@@ -437,7 +437,7 @@ class LimeClient:
     def __init__(self):
         self.api_key = settings.lime_api_key
         self.base_url = settings.lime_base_url
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = httpx.AsyncClient(timeout=5.0)  # Reduced from 30s to 5s for faster failures
 
     async def get_available_vehicles(self, point: Point, radius: int = 1000) -> List[BikeScooterData]:
         """Get available bikes and scooters near a point."""
@@ -488,7 +488,7 @@ class OpenWeatherClient:
     def __init__(self):
         self.api_key = settings.openweather_api_key
         self.base_url = settings.openweather_base_url
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = httpx.AsyncClient(timeout=5.0)  # Reduced from 30s to 5s for faster failures
 
     async def get_current_weather(self, point: Point) -> WeatherData:
         """Get current weather conditions for a point."""
@@ -562,7 +562,7 @@ class VancouverOpenDataClient:
 
     def __init__(self):
         self.base_url = settings.vancouver_open_data_base_url
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = httpx.AsyncClient(timeout=5.0)  # Reduced from 30s to 5s for faster failures
 
     async def get_road_closures(self) -> List[Dict[str, Any]]:
         """Get current road closures and construction."""

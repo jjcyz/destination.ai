@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
-import { Search, MapPin, Settings, Navigation, Clock, Shield, Leaf, Mountain, Heart, DollarSign } from 'lucide-react'
+import { Search, MapPin, Settings, Navigation, Clock, Shield, Leaf, Mountain, Heart, DollarSign, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../utils/cn'
 import ModeSelector from './ModeSelector'
-import type { RouteRequest } from '../types'
-import { MOCK_COORDINATES, DEFAULT_PREFERENCES, DEFAULT_TRANSPORT_MODES, WALKING_DISTANCE_CONFIG, ROUTE_PREFERENCE_OPTIONS } from '../config'
+import AddressAutocomplete from './AddressAutocomplete'
+import type { RouteRequest, Point } from '../types'
+import { DEFAULT_PREFERENCES, DEFAULT_TRANSPORT_MODES, WALKING_DISTANCE_CONFIG, ROUTE_PREFERENCE_OPTIONS } from '../config'
+import { routeAPI } from '../services/api'
 
 interface RouteFormProps {
   onSubmit: (request: RouteRequest) => void
@@ -17,6 +19,10 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
   const [preferences, setPreferences] = useState<string[]>([...DEFAULT_PREFERENCES])
   const [transportModes, setTransportModes] = useState<string[]>([...DEFAULT_TRANSPORT_MODES])
   const [maxWalkingDistance, setMaxWalkingDistance] = useState<number>(WALKING_DISTANCE_CONFIG.DEFAULT)
+  const [isGeocoding, setIsGeocoding] = useState(false)
+  const [geocodingError, setGeocodingError] = useState<string | null>(null)
+  const [originError, setOriginError] = useState<string | null>(null)
+  const [destinationError, setDestinationError] = useState<string | null>(null)
 
   const preferenceOptions = ROUTE_PREFERENCE_OPTIONS.map((option) => ({
     ...option,
@@ -43,31 +49,87 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
     setTransportModes(modes)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const geocodeAddress = async (address: string): Promise<Point> => {
+    if (!address.trim()) {
+      throw new Error('Please enter an address')
+    }
+
+    try {
+      // Geocode the address (can be from predefined list or Google Places)
+      const point = await routeAPI.geocodeAddress(address)
+
+      // Validate that we got valid coordinates
+      if (!point || typeof point.lat !== 'number' || typeof point.lng !== 'number') {
+        throw new Error('Invalid coordinates returned from geocoding service')
+      }
+
+      // Log for debugging
+      if (import.meta.env.DEV) {
+        console.log(`Geocoded "${address}" to:`, point)
+      }
+
+      return point
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Geocoding failed'
+      console.error(`Geocoding error for "${address}":`, error)
+      throw new Error(
+        `Could not find location "${address}". Please select a valid address from the dropdown. ` +
+        `Error: ${errorMessage}`
+      )
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Clear previous errors
+    setOriginError(null)
+    setDestinationError(null)
+    setGeocodingError(null)
+
     if (!origin.trim() || !destination.trim()) {
+      if (!origin.trim()) {
+        setOriginError('Please select an origin address')
+      }
+      if (!destination.trim()) {
+        setDestinationError('Please select a destination address')
+      }
       return
     }
 
-    // Mock coordinates for demo - in real app would geocode addresses
-    const originLower = origin.toLowerCase().trim()
-    const destinationLower = destination.toLowerCase().trim()
+    setIsGeocoding(true)
 
-    const originPoint = MOCK_COORDINATES[originLower] || MOCK_COORDINATES['vancouver downtown']
-    const destinationPoint = MOCK_COORDINATES[destinationLower] || MOCK_COORDINATES['vancouver airport']
+    try {
+      // Geocode both addresses in parallel
+      const [originPoint, destinationPoint] = await Promise.all([
+        geocodeAddress(origin).catch((error) => {
+          setOriginError(error instanceof Error ? error.message : 'Failed to geocode origin')
+          throw error
+        }),
+        geocodeAddress(destination).catch((error) => {
+          setDestinationError(error instanceof Error ? error.message : 'Failed to geocode destination')
+          throw error
+        }),
+      ])
 
-    const request: RouteRequest = {
-      origin: originPoint,
-      destination: destinationPoint,
-      preferences,
-      transport_modes: transportModes,
-      max_walking_distance: maxWalkingDistance,
-      avoid_highways: false,
-      accessibility_requirements: [],
+      const request: RouteRequest = {
+        origin: originPoint,
+        destination: destinationPoint,
+        preferences,
+        transport_modes: transportModes,
+        max_walking_distance: maxWalkingDistance,
+        avoid_highways: false,
+        accessibility_requirements: [],
+      }
+
+      onSubmit(request)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to geocode addresses'
+      setGeocodingError(errorMessage)
+      console.error('Geocoding error:', error)
+    } finally {
+      setIsGeocoding(false)
     }
-
-    onSubmit(request)
   }
 
   return (
@@ -85,16 +147,16 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3, delay: 0.3 }}
         >
-          <label className="flex items-center text-sm font-semibold text-gray-700 mb-3">
-            <MapPin className="w-4 h-4 mr-2 text-primary-600" />
-            Origin
-          </label>
-          <input
-            type="text"
+          <AddressAutocomplete
             value={origin}
-            onChange={(e) => setOrigin(e.target.value)}
-            placeholder="e.g., Vancouver Downtown, Stanley Park, UBC"
-            className="input-field"
+            onChange={(value) => {
+              setOrigin(value)
+              setOriginError(null)
+            }}
+            placeholder="Select or search for origin..."
+            label="Origin"
+            icon={<MapPin className="w-4 h-4 mr-2 text-primary-600" />}
+            error={originError}
             required
           />
         </motion.div>
@@ -104,16 +166,16 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3, delay: 0.4 }}
         >
-          <label className="flex items-center text-sm font-semibold text-gray-700 mb-3">
-            <Navigation className="w-4 h-4 mr-2 text-primary-600" />
-            Destination
-          </label>
-          <input
-            type="text"
+          <AddressAutocomplete
             value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            placeholder="e.g., Vancouver Airport, Burnaby, Richmond"
-            className="input-field"
+            onChange={(value) => {
+              setDestination(value)
+              setDestinationError(null)
+            }}
+            placeholder="Select or search for destination..."
+            label="Destination"
+            icon={<Navigation className="w-4 h-4 mr-2 text-primary-600" />}
+            error={destinationError}
             required
           />
         </motion.div>
@@ -213,19 +275,53 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
         </div>
       </motion.div>
 
+      {/* Geocoding Error Display */}
+      <AnimatePresence>
+        {geocodingError && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="glass-card border-l-4 border-red-500 bg-red-50/80 p-4"
+          >
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5 mr-3" />
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-red-800 mb-1">Geocoding Error</h3>
+                <p className="text-sm text-red-700 mb-2">{geocodingError}</p>
+                <p className="text-xs text-red-600">
+                  Please select addresses from the dropdown above. All addresses are validated Vancouver locations.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Submit Button */}
       <motion.button
         type="submit"
-        disabled={isLoading || !origin.trim() || !destination.trim()}
+        disabled={isLoading || isGeocoding || !origin.trim() || !destination.trim()}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 1.0 }}
-        whileHover={{ scale: isLoading ? 1 : 1.02 }}
-        whileTap={{ scale: isLoading ? 1 : 0.98 }}
+        whileHover={{ scale: isLoading || isGeocoding ? 1 : 1.02 }}
+        whileTap={{ scale: isLoading || isGeocoding ? 1 : 0.98 }}
         className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
       >
         <AnimatePresence mode="wait">
-          {isLoading ? (
+          {isGeocoding ? (
+            <motion.div
+              key="geocoding"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center justify-center"
+            >
+              <div className="loading-spinner mr-3" />
+              <span>Finding Locations...</span>
+            </motion.div>
+          ) : isLoading ? (
             <motion.div
               key="loading"
               initial={{ opacity: 0 }}

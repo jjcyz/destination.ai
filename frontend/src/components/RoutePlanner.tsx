@@ -7,7 +7,7 @@ import RouteForm from './RouteForm'
 import RealTimePanel from './RealTimePanel'
 import AlternativeRoutes from './AlternativeRoutes'
 import PredictiveNotifications from './PredictiveNotifications'
-import { routeAPI } from '../services/api'
+import { routeAPI, configAPI } from '../services/api'
 import type { RouteRequest, Route } from '../types'
 
 const RoutePlanner: React.FC = () => {
@@ -20,34 +20,73 @@ const RoutePlanner: React.FC = () => {
     routeDispatch({ type: 'CLEAR_ERROR' })
 
     try {
+      // Log request for debugging
+      if (import.meta.env.DEV) {
+        console.log('Calculating route:', {
+          origin: request.origin,
+          destination: request.destination,
+          preferences: request.preferences,
+          transport_modes: request.transport_modes,
+        })
+      }
+
       const response = await routeAPI.calculateRoute(request)
+
+      if (import.meta.env.DEV) {
+        console.log('Route calculation successful:', {
+          routesCount: response.routes.length,
+          alternativesCount: response.alternatives.length,
+          processingTime: response.processing_time,
+        })
+      }
+
       routeDispatch({ type: 'SET_ROUTES', payload: response })
       routeDispatch({ type: 'SET_LAST_REQUEST', payload: request })
 
-      // Calculate gamification rewards for the first route
+      // Calculate gamification rewards for the first route (non-blocking)
       if (response.routes.length > 0) {
-        const rewards = await routeAPI.calculateRewards(response.routes[0], userState.profile)
+        routeAPI.calculateRewards(response.routes[0], userState.profile)
+          .then((rewards) => {
+            // Update user stats
+            if (rewards.sustainability_points > 0) {
+              userDispatch({ type: 'UPDATE_POINTS', payload: rewards.sustainability_points })
+            }
 
-        // Update user stats
-        if (rewards.sustainability_points > 0) {
-          userDispatch({ type: 'UPDATE_POINTS', payload: rewards.sustainability_points })
-        }
+            if (rewards.achievements_unlocked?.length > 0) {
+              rewards.achievements_unlocked.forEach((achievementId: string) => {
+                userDispatch({ type: 'ADD_ACHIEVEMENT', payload: achievementId })
+              })
+            }
 
-        if (rewards.achievements_unlocked?.length > 0) {
-          rewards.achievements_unlocked.forEach((achievementId: string) => {
-            userDispatch({ type: 'ADD_ACHIEVEMENT', payload: achievementId })
+            if (rewards.badges_earned?.length > 0) {
+              rewards.badges_earned.forEach((badgeId: string) => {
+                userDispatch({ type: 'ADD_BADGE', payload: badgeId })
+              })
+            }
           })
-        }
-
-        if (rewards.badges_earned?.length > 0) {
-          rewards.badges_earned.forEach((badgeId: string) => {
-            userDispatch({ type: 'ADD_BADGE', payload: badgeId })
+          .catch((error) => {
+            // Log error but don't block UI - rewards are non-critical
+            console.warn('Failed to calculate rewards:', error)
           })
-        }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to calculate routes'
+      let errorMessage = error instanceof Error ? error.message : 'Failed to calculate routes'
+
+      // Check if backend is reachable
+      if (errorMessage.includes('timeout') || errorMessage.includes('ECONNABORTED')) {
+        try {
+          // Try to check backend health
+          await configAPI.healthCheck()
+          errorMessage = 'Route calculation timed out. The backend is running but route calculation is taking too long. Please try again with simpler route preferences.'
+        } catch (healthError) {
+          errorMessage = 'Backend server is not responding. Please make sure the backend is running on http://localhost:8000'
+        }
+      }
+
+      console.error('Route calculation error:', error)
       routeDispatch({ type: 'SET_ERROR', payload: errorMessage })
+    } finally {
+      routeDispatch({ type: 'SET_LOADING', payload: false })
     }
   }
 
@@ -139,31 +178,12 @@ const RoutePlanner: React.FC = () => {
                 transition={{ duration: 0.3 }}
                 className="h-[500px] sm:h-[600px] lg:h-[800px] xl:h-[900px] min-h-[200px]"
               >
-                {(() => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const env = (import.meta as any).env
-                  const googleMapsApiKey = env?.VITE_GOOGLE_MAPS_API_KEY
-
-                  // Use Google Maps if API key is available, otherwise fallback to Leaflet
-                  if (googleMapsApiKey) {
-                    return (
-                      <GoogleMapView
-                        routes={routeState.currentRoutes}
-                        selectedRoute={routeState.selectedRoute}
-                        lastRequest={routeState.lastRequest}
-                        apiKey={googleMapsApiKey}
-                      />
-                    )
-                  }
-
-                  return (
-                    <MapView
-                      routes={routeState.currentRoutes}
-                      selectedRoute={routeState.selectedRoute}
-                      lastRequest={routeState.lastRequest}
-                    />
-                  )
-                })()}
+                <GoogleMapView
+                  routes={routeState.currentRoutes}
+                  selectedRoute={routeState.selectedRoute}
+                  lastRequest={routeState.lastRequest}
+                  apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}
+                />
               </motion.div>
             )}
           </AnimatePresence>
