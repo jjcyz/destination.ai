@@ -7,6 +7,7 @@ import AddressAutocomplete from './AddressAutocomplete'
 import type { RouteRequest, Point } from '../types'
 import { DEFAULT_PREFERENCES, DEFAULT_TRANSPORT_MODES, WALKING_DISTANCE_CONFIG, ROUTE_PREFERENCE_OPTIONS } from '../config'
 import { routeAPI } from '../services/api'
+import { getCachedGeocode, cacheGeocode } from '../utils/geocodingCache'
 import { getPreferenceIconAlt } from '../utils/routePreferences'
 
 interface RouteFormProps {
@@ -48,9 +49,21 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
       throw new Error('Please enter an address')
     }
 
+    // Check cache first
+    const cached = getCachedGeocode(address)
+    if (cached) {
+      if (import.meta.env.DEV) {
+        console.log(`Using cached geocode for "${address}"`)
+      }
+      return cached
+    }
+
     try {
       // Geocode the address using Google Places API
       const point = await routeAPI.geocodeAddress(address)
+
+      // Cache the result
+      cacheGeocode(address, point)
 
       // Validate that we got valid coordinates
       if (!point || typeof point.lat !== 'number' || typeof point.lng !== 'number') {

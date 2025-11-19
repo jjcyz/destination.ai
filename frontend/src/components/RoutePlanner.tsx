@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRoute } from '../contexts/RouteContext'
 import { useUser } from '../contexts/UserContext'
@@ -14,8 +14,18 @@ const RoutePlanner: React.FC = () => {
   const { state: routeState, dispatch: routeDispatch } = useRoute()
   const { state: userState, dispatch: userDispatch } = useUser()
   const [showMap, setShowMap] = useState(true)
+  const requestInProgressRef = useRef(false)
 
   const handleRouteRequest = async (request: RouteRequest): Promise<void> => {
+    // Prevent duplicate requests
+    if (requestInProgressRef.current) {
+      if (import.meta.env.DEV) {
+        console.log('Route request already in progress, skipping duplicate')
+      }
+      return
+    }
+
+    requestInProgressRef.current = true
     routeDispatch({ type: 'SET_LOADING', payload: true })
     routeDispatch({ type: 'CLEAR_ERROR' })
 
@@ -87,6 +97,7 @@ const RoutePlanner: React.FC = () => {
       routeDispatch({ type: 'SET_ERROR', payload: errorMessage })
     } finally {
       routeDispatch({ type: 'SET_LOADING', payload: false })
+      requestInProgressRef.current = false
     }
   }
 

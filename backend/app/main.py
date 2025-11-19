@@ -8,8 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 import logging
-from typing import List, Optional
-from datetime import datetime
+from typing import List, Optional, Dict, Tuple
+from datetime import datetime, timedelta
 
 from .models import (
     RouteRequest, RouteResponse, Point, UserProfile, GamificationStats,
@@ -44,6 +44,10 @@ app.add_middleware(
 graph_builder = None
 routing_engine = None
 gamification_engine = GamificationEngine()
+
+# Geocoding cache (address -> (point, timestamp))
+_geocoding_cache: Dict[str, Tuple[Point, datetime]] = {}
+_cache_ttl = timedelta(minutes=30)  # Cache for 30 minutes
 
 
 @app.on_event("startup")
@@ -178,6 +182,7 @@ async def calculate_route(request: RouteRequest):
 async def geocode_address(address: str):
     """
     Geocode an address to coordinates.
+    Uses caching to avoid redundant API calls and reduce costs.
 
     Args:
         address: Address string to geocode
@@ -186,6 +191,19 @@ async def geocode_address(address: str):
         Point with latitude and longitude
     """
     try:
+        # Normalize address for cache key
+        cache_key = address.lower().strip()
+
+        # Check cache first
+        if cache_key in _geocoding_cache:
+            cached_point, cached_time = _geocoding_cache[cache_key]
+            if datetime.now() - cached_time < _cache_ttl:
+                logger.debug(f"Using cached geocode for: {address}")
+                return cached_point
+            else:
+                # Remove expired entry
+                del _geocoding_cache[cache_key]
+
         # Check if we have API keys
         api_keys_status = validate_api_keys()
 
@@ -193,7 +211,10 @@ async def geocode_address(address: str):
             # Demo mode - return mock coordinates for common Vancouver locations
             logger.info("Using demo geocoding mode")
             from .demo import DemoDataProvider
-            return DemoDataProvider.geocode_address(address)
+            point = DemoDataProvider.geocode_address(address)
+            # Cache demo result too
+            _geocoding_cache[cache_key] = (point, datetime.now())
+            return point
 
         if not routing_engine or not routing_engine.api_client:
             raise HTTPException(status_code=503, detail="API client not initialized")
@@ -202,6 +223,19 @@ async def geocode_address(address: str):
 
         if not point:
             raise HTTPException(status_code=404, detail="Address not found")
+
+        # Cache the result
+        _geocoding_cache[cache_key] = (point, datetime.now())
+
+        # Clean up old cache entries periodically (keep cache size reasonable)
+        if len(_geocoding_cache) > 1000:
+            now = datetime.now()
+            expired_keys = [
+                key for key, (_, timestamp) in _geocoding_cache.items()
+                if now - timestamp > _cache_ttl
+            ]
+            for key in expired_keys:
+                del _geocoding_cache[key]
 
         return point
 
