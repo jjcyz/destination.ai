@@ -24,6 +24,7 @@ from .realtime_integration import (
     update_graph_with_real_time_data,
     get_realtime_transit_info
 )
+from .translink_enhancements import apply_translink_enhancements
 
 __all__ = [
     'get_cost_function',
@@ -41,5 +42,6 @@ __all__ = [
     'calculate_weather_penalty',
     'update_graph_with_real_time_data',
     'get_realtime_transit_info',
+    'apply_translink_enhancements',
 ]
 

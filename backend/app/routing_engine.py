@@ -21,6 +21,7 @@ from .routing import (
     apply_preference_scoring,
     sort_routes_by_preferences,
     update_graph_with_real_time_data,
+    apply_translink_enhancements,
 )
 
 logger = logging.getLogger(__name__)
@@ -192,8 +193,32 @@ class RoutingEngine:
                 except Exception as e:
                     logger.error(f"Error in fallback route calculation: {e}", exc_info=True)
 
-            # Sort routes by preference priority
+            # Apply TransLink real-time enhancements
+            # Filter routes with service alerts and high delays, prefer on-time routes
+            all_routes = routes + alternatives
+            enhanced_routes, filtered_routes, alternatives_by_route = apply_translink_enhancements(
+                all_routes,
+                filter_service_alerts=True,
+                filter_high_delays=True,
+                delay_threshold=10,  # Filter routes with >10min delays
+                prefer_on_time=True
+            )
+
+            # Separate enhanced routes back into primary and alternatives
+            # Keep original order but prioritize routes without delays
+            routes = [r for r in enhanced_routes if r in routes]
+            alternatives = [r for r in enhanced_routes if r in alternatives]
+
+            # Add alternative routes found for delayed routes
+            for delayed_route_id, alt_routes in alternatives_by_route.items():
+                for alt_route in alt_routes:
+                    if alt_route not in alternatives and alt_route not in routes:
+                        alternatives.append(alt_route)
+                        logger.info(f"Added alternative route {alt_route.id} for delayed route {delayed_route_id}")
+
+            # Sort routes by preference priority (now includes delay considerations)
             routes = sort_routes_by_preferences(routes, request.preferences)
+            alternatives = sort_routes_by_preferences(alternatives, request.preferences)
 
             processing_time = (datetime.now() - start_time).total_seconds()
 
