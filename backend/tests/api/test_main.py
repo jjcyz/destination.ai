@@ -200,9 +200,17 @@ class TestRouteEndpoint:
     @patch('app.main.routing_engine', new_callable=MagicMock)
     def test_route_endpoint_invalid_coordinates(self, mock_routing_engine, client):
         """Test route endpoint with invalid coordinates."""
+        from app.models import RouteResponse
+        
         # Mock routing_engine to avoid 503 error
-        # Set routing_engine to a mock so it's not None
-        mock_routing_engine.find_routes = AsyncMock()
+        # Create a proper RouteResponse in case find_routes gets called
+        # (though it shouldn't for invalid coordinates)
+        mock_response = RouteResponse(
+            routes=[],
+            processing_time=0.0,
+            data_sources=[]
+        )
+        mock_routing_engine.find_routes = AsyncMock(return_value=mock_response)
 
         # Also need to set it in the module
         import app.main
