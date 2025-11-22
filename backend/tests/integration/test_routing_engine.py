@@ -95,8 +95,8 @@ def mock_google_maps_response():
 class TestRoutingEngineFindRoutes:
     """Tests for RoutingEngine.find_routes method."""
 
-    @pytest.mark.asyncio
     @patch('app.config.validate_api_keys')
+    @pytest.mark.asyncio
     async def test_find_routes_demo_mode(self, mock_validate_keys, routing_engine, sample_route_request):
         """Test route finding in demo mode (no API keys)."""
         mock_validate_keys.return_value = {"all_required": False}
@@ -107,8 +107,8 @@ class TestRoutingEngineFindRoutes:
         assert len(response.routes) > 0
         assert "demo" in response.data_sources[0].lower() or "mock" in response.data_sources[0].lower()
 
-    @pytest.mark.asyncio
     @patch('app.config.validate_api_keys')
+    @pytest.mark.asyncio
     async def test_find_routes_walking_mode(
         self, mock_validate_keys, routing_engine, sample_route_request, mock_google_maps_response
     ):
@@ -122,8 +122,8 @@ class TestRoutingEngineFindRoutes:
         assert len(response.routes) > 0
         assert response.routes[0].steps[0].mode == TransportMode.WALKING
 
-    @pytest.mark.asyncio
     @patch('app.config.validate_api_keys')
+    @pytest.mark.asyncio
     async def test_find_routes_multiple_modes(
         self, mock_validate_keys, routing_engine, mock_google_maps_response
     ):
@@ -143,8 +143,8 @@ class TestRoutingEngineFindRoutes:
         # Should have routes for different modes
         assert len(response.routes) > 0
 
-    @pytest.mark.asyncio
     @patch('app.config.validate_api_keys')
+    @pytest.mark.asyncio
     async def test_find_routes_api_timeout(
         self, mock_validate_keys, routing_engine, sample_route_request
     ):
@@ -158,8 +158,8 @@ class TestRoutingEngineFindRoutes:
         # Should either return empty routes or fallback to demo
         assert isinstance(response, RouteResponse)
 
-    @pytest.mark.asyncio
     @patch('app.config.validate_api_keys')
+    @pytest.mark.asyncio
     async def test_find_routes_api_error(
         self, mock_validate_keys, routing_engine, sample_route_request
     ):
@@ -172,8 +172,8 @@ class TestRoutingEngineFindRoutes:
 
         assert isinstance(response, RouteResponse)
 
-    @pytest.mark.asyncio
     @patch('app.config.validate_api_keys')
+    @pytest.mark.asyncio
     async def test_find_routes_no_routes_found(
         self, mock_validate_keys, routing_engine, sample_route_request
     ):
@@ -187,8 +187,8 @@ class TestRoutingEngineFindRoutes:
         # May have empty routes or fallback routes
         assert isinstance(response.routes, list)
 
-    @pytest.mark.asyncio
     @patch('app.config.validate_api_keys')
+    @pytest.mark.asyncio
     async def test_find_routes_with_preferences(
         self, mock_validate_keys, routing_engine, mock_google_maps_response
     ):
@@ -208,8 +208,8 @@ class TestRoutingEngineFindRoutes:
         assert isinstance(response, RouteResponse)
         assert len(response.routes) > 0
 
-    @pytest.mark.asyncio
     @patch('app.config.validate_api_keys')
+    @pytest.mark.asyncio
     async def test_find_routes_processing_time(
         self, mock_validate_keys, routing_engine, sample_route_request, mock_google_maps_response
     ):

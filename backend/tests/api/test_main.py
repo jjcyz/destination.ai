@@ -197,10 +197,14 @@ class TestRouteEndpoint:
         )
         assert response.status_code == 422  # Validation error
 
+    @patch('app.main.validate_api_keys')
     @patch('app.main.routing_engine', new_callable=MagicMock)
-    def test_route_endpoint_invalid_coordinates(self, mock_routing_engine, client):
+    def test_route_endpoint_invalid_coordinates(self, mock_routing_engine, mock_validate_keys, client):
         """Test route endpoint with invalid coordinates."""
         from app.models import RouteResponse
+        
+        # Mock validate_api_keys to return all_required=True so bounds check runs
+        mock_validate_keys.return_value = {"all_required": True}
         
         # Mock routing_engine to avoid 503 error
         # Create a proper RouteResponse in case find_routes gets called
@@ -221,7 +225,7 @@ class TestRouteEndpoint:
             response = client.post(
                 "/api/v1/route",
                 json={
-                    "origin": {"lat": 200, "lng": -123.1207},  # Invalid lat
+                    "origin": {"lat": 200, "lng": -123.1207},  # Invalid lat (outside bounds)
                     "destination": {"lat": 49.2827, "lng": -123.1207}
                 }
             )
