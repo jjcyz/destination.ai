@@ -4,6 +4,11 @@ AI-powered multi-modal route recommendation system for Vancouver with real-time 
 
 **Preview:** https://destination-ai.vercel.app/
 
+## Status Badges
+![CI](https://github.com/jjcyz/destination.ai/workflows/CI/badge.svg)
+![Deploy](https://github.com/jjcyz/destination.ai/workflows/Deploy/badge.svg)
+[![codecov](https://codecov.io/gh/jjcyz/destination.ai/branch/main/graph/badge.svg)](https://codecov.io/gh/jjcyz/destination.ai)
+
 ## Quick Start
 
 ### Prerequisites

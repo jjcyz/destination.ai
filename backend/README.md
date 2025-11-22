@@ -65,3 +65,7 @@ Once the server is running, visit:
 - ReDoc: http://localhost:8000/redoc
 - Health Check: http://localhost:8000/health
 
+![CI](https://github.com/YOUR_USERNAME/destination.ai/workflows/CI/badge.svg)
+![Deploy](https://github.com/YOUR_USERNAME/destination.ai/workflows/Deploy/badge.svg)
+[![codecov](https://codecov.io/gh/YOUR_USERNAME/destination.ai/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_USERNAME/destination.ai)
+
