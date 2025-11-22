@@ -51,7 +51,6 @@ def routing_engine(mock_graph_builder, mock_api_client, event_loop):
         loop = asyncio.get_event_loop()
     except RuntimeError:
         asyncio.set_event_loop(event_loop)
-    
     engine = RoutingEngine(mock_graph_builder)
     engine.api_client = mock_api_client
     return engine
