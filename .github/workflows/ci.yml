@@ -61,7 +61,7 @@ jobs:
         uses: codecov/codecov-action@v4
         if: matrix.python-version == '3.11'
         with:
-          file: ./backend/coverage.xml
+          file: ./coverage.xml
           flags: backend
           name: backend-coverage
           fail_ci_if_error: false
@@ -71,7 +71,7 @@ jobs:
         if: matrix.python-version == '3.11'
         with:
           name: coverage-html-backend
-          path: backend/htmlcov/
+          path: ./htmlcov/
           retention-days: 7
 
   frontend-lint:
