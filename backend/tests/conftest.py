@@ -4,19 +4,18 @@ Shared pytest fixtures and configuration for all tests.
 
 import sys
 import os
+import asyncio
 from pathlib import Path
+from typing import Dict, Any
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 # Add backend directory to Python path if not already there
 backend_dir = Path(__file__).parent.parent
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
-
-import pytest
-import asyncio
-import sys
-from typing import Dict, Any
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
 
 from app.models import (
     Point, RouteRequest, RouteResponse, Route, RouteStep,
@@ -31,6 +30,18 @@ if sys.version_info >= (3, 9):
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     else:
         asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
+
+
+@pytest.fixture(scope="function")
+def event_loop():
+    """
+    Create an event loop for each test function.
+    This fixture is required by pytest-asyncio in strict mode.
+    """
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest.fixture
