@@ -12,6 +12,8 @@ if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
 import pytest
+import asyncio
+import sys
 from typing import Dict, Any
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
@@ -20,6 +22,15 @@ from app.models import (
     Point, RouteRequest, RouteResponse, Route, RouteStep,
     TransportMode, RoutePreference, UserProfile
 )
+
+# Ensure proper event loop policy for Python 3.9+
+if sys.version_info >= (3, 9):
+    # Python 3.9+ requires explicit event loop policy
+    # This ensures pytest-asyncio works correctly
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    else:
+        asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
 
 
 @pytest.fixture
