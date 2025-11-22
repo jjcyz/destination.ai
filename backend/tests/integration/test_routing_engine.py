@@ -9,6 +9,7 @@ Tests cover:
 """
 
 import pytest
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from app.routing_engine import RoutingEngine
 from app.models import (
@@ -41,8 +42,16 @@ def mock_api_client():
 
 
 @pytest.fixture
-def routing_engine(mock_graph_builder, mock_api_client):
+def routing_engine(mock_graph_builder, mock_api_client, event_loop):
     """Create routing engine with mocked dependencies."""
+    # Ensure event loop is set for the current thread
+    # This is needed because RoutingEngine.__init__ creates APIClientManager
+    # which creates httpx.AsyncClient and asyncio.Lock that require an event loop
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(event_loop)
+    
     engine = RoutingEngine(mock_graph_builder)
     engine.api_client = mock_api_client
     return engine
