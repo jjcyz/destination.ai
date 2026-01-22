@@ -126,7 +126,7 @@ const FavoritePlaces: React.FC<FavoritePlacesProps> = ({ onSelectPlace, currentO
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="glass-card-strong p-4 sm:p-6"
+      className="glass-card-strong p-4 sm:p-6 h-full flex flex-col"
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">

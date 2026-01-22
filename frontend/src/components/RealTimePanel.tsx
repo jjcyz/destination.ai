@@ -272,13 +272,14 @@ const RealTimePanel: React.FC<RealTimePanelProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.3 }}
-      className="card-compact space-y-4"
+      className="glass-card-strong p-4 sm:p-6 space-y-4 h-full flex flex-col"
     >
-      <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+      <h3 className="text-lg font-semibold text-gray-900 flex items-center mb-4">
         <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
         Real-Time Updates & Alerts
       </h3>
 
+      <div className="flex-1 overflow-y-auto space-y-4">
       {/* Smart Alerts - Always Visible */}
       {notifications.length > 0 && (
         <div className="space-y-2">
@@ -465,9 +466,10 @@ const RealTimePanel: React.FC<RealTimePanelProps> = ({
         </div>
       )}
 
+      </div>
 
       {/* Update Time */}
-      <div className="text-xs text-gray-500 text-center pt-2 border-t border-white/30">
+      <div className="text-xs text-gray-500 text-center pt-2 border-t border-white/30 mt-auto">
         Last updated: {new Date().toLocaleTimeString()}
       </div>
     </motion.div>

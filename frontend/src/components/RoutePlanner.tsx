@@ -199,82 +199,69 @@ const RoutePlanner: React.FC = () => {
         </motion.div>
 
       {/* Mobile-first responsive layout */}
-      <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch">
         {/* Origin/Destination and Favorite Places Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Origin and Destination - Standalone Component */}
-          <div className="lg:col-span-2">
-            <OriginDestination
-              origin={formOrigin}
-              destination={formDestination}
-              onOriginChange={handleOriginChange}
-              onDestinationChange={handleDestinationChange}
-              originError={originError}
-              destinationError={destinationError}
-              onSubmit={handleFormSubmit}
-              isLoading={routeState.isLoading}
-              isGeocoding={isGeocoding}
-            />
-          </div>
-
-          {/* Favorite Places */}
-          <div className="lg:col-span-1">
-            <FavoritePlaces
-              onSelectPlace={handleFavoritePlaceSelect}
-              currentOrigin={currentOrigin}
-            />
-          </div>
+        <div className="lg:col-span-2">
+          <OriginDestination
+            origin={formOrigin}
+            destination={formDestination}
+            onOriginChange={handleOriginChange}
+            onDestinationChange={handleDestinationChange}
+            originError={originError}
+            destinationError={destinationError}
+            onSubmit={handleFormSubmit}
+            isLoading={routeState.isLoading}
+            isGeocoding={isGeocoding}
+          />
         </div>
 
-        {/* Map and Updates Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Map */}
+        {/* Favorite Places */}
+        <div className="lg:col-span-1 flex flex-col">
+          <FavoritePlaces
+            onSelectPlace={handleFavoritePlaceSelect}
+            currentOrigin={currentOrigin}
+          />
+        </div>
+
+        {/* Map */}
+        <div className="lg:col-span-2 flex flex-col">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="lg:col-span-2 glass-card-strong p-4 sm:p-6"
+            className="flex flex-col flex-1 min-h-[400px] sm:min-h-[500px] lg:min-h-[600px] rounded-2xl overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center">
-                <div className="w-2 h-2 bg-secondary-500 rounded-full mr-3" />
-                Route Map
-              </h2>
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="hidden sm:inline">Live</span>
-              </div>
-            </div>
-
-            <div className="h-[400px] sm:h-[500px] lg:h-[600px] min-h-[300px]">
-              <GoogleMapView
-                routes={routeState.currentRoutes}
-                selectedRoute={routeState.selectedRoute}
-                lastRequest={routeState.lastRequest}
-                apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}
-              />
-            </div>
+            <GoogleMapView
+              routes={routeState.currentRoutes}
+              selectedRoute={routeState.selectedRoute}
+              lastRequest={routeState.lastRequest}
+              apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}
+            />
           </motion.div>
+        </div>
 
-          {/* Real-time Updates & Alerts */}
+        {/* Real-time Updates & Alerts */}
+        <div className="lg:col-span-1 flex flex-col">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="lg:col-span-1"
+            className="h-full"
           >
             <RealTimePanel />
           </motion.div>
         </div>
 
         {/* Route Results */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <AnimatePresence>
-            {routeState.currentRoutes.length > 0 && (
+        {routeState.currentRoutes.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="lg:col-span-3"
+          >
+            <AnimatePresence>
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -292,33 +279,30 @@ const RoutePlanner: React.FC = () => {
                   onRouteSelect={handleRouteSelect}
                 />
               </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+            </AnimatePresence>
+          </motion.div>
+        )}
 
         {/* Route Preferences Form - Last Component */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Route Form */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-            className="lg:col-span-3"
-          >
-            <div className="glass-card-strong p-4 sm:p-6" ref={routeFormRef}>
-              <RouteForm
-                onSubmit={handleRouteRequest}
-                isLoading={routeState.isLoading}
-                onOriginChange={handleOriginChange}
-                onDestinationChange={handleDestinationChange}
-                initialOrigin={formOrigin}
-                initialDestination={formDestination}
-                isGeocoding={isGeocoding}
-                onGeocodingChange={setIsGeocoding}
-              />
-            </div>
-          </motion.div>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          className="lg:col-span-3"
+        >
+          <div className="glass-card-strong p-4 sm:p-6" ref={routeFormRef}>
+            <RouteForm
+              onSubmit={handleRouteRequest}
+              isLoading={routeState.isLoading}
+              onOriginChange={handleOriginChange}
+              onDestinationChange={handleDestinationChange}
+              initialOrigin={formOrigin}
+              initialDestination={formDestination}
+              isGeocoding={isGeocoding}
+              onGeocodingChange={setIsGeocoding}
+            />
+          </div>
+        </motion.div>
       </div>
 
       {/* Error Display */}

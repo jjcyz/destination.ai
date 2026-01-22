@@ -38,10 +38,9 @@ const OriginDestination: React.FC<OriginDestinationProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="glass-card-strong p-4 sm:p-6 mb-6 relative z-50"
+      className="glass-card-strong p-4 sm:p-6 relative z-50"
     >
       <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
-        <div className="w-2 h-2 bg-primary-500 rounded-full mr-3" />
         Plan Your Route
       </h2>
 
