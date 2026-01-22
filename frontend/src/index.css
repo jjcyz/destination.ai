@@ -218,6 +218,11 @@
 }
 
 /* Touch-friendly interactions */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 @media (hover: none) and (pointer: coarse) {
   .btn-primary, .btn-secondary, .btn-glass {
     @apply hover:scale-100 active:scale-95;
@@ -226,6 +231,11 @@
   /* Larger touch targets for mobile */
   button, input, select {
     @apply min-h-[44px];
+  }
+
+  /* Improve drawer menu touch interactions */
+  nav button {
+    @apply min-h-[48px];
   }
 }
 

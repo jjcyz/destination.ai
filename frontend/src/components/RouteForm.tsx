@@ -1,9 +1,9 @@
-import React, { useState } from 'react'
-import { Search, MapPin, Settings, Navigation, AlertCircle } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Search, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../utils/cn'
 import ModeSelector from './ModeSelector'
-import AddressAutocomplete from './AddressAutocomplete'
+import OriginDestination from './OriginDestination'
 import type { RouteRequest, Point } from '../types'
 import { DEFAULT_PREFERENCES, DEFAULT_TRANSPORT_MODES, WALKING_DISTANCE_CONFIG, ROUTE_PREFERENCE_OPTIONS } from '../config'
 import { routeAPI } from '../services/api'
@@ -13,15 +13,31 @@ import { getPreferenceIconAlt } from '../utils/routePreferences'
 interface RouteFormProps {
   onSubmit: (request: RouteRequest) => void
   isLoading: boolean
+  onOriginChange?: (origin: string) => void
+  onDestinationChange?: (destination: string) => void
+  initialOrigin?: string
+  initialDestination?: string
+  onFormSubmit?: () => void
+  isGeocoding?: boolean
+  onGeocodingChange?: (isGeocoding: boolean) => void
 }
 
-const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
-  const [origin, setOrigin] = useState('')
-  const [destination, setDestination] = useState('')
+const RouteForm: React.FC<RouteFormProps> = ({
+  onSubmit,
+  isLoading,
+  onOriginChange,
+  onDestinationChange,
+  initialOrigin = '',
+  initialDestination = '',
+  onFormSubmit,
+  isGeocoding = false,
+  onGeocodingChange,
+}) => {
+  const [origin, setOrigin] = useState(initialOrigin)
+  const [destination, setDestination] = useState(initialDestination)
   const [preferences, setPreferences] = useState<string[]>([...DEFAULT_PREFERENCES])
   const [transportModes, setTransportModes] = useState<string[]>([...DEFAULT_TRANSPORT_MODES])
   const [maxWalkingDistance, setMaxWalkingDistance] = useState<number>(WALKING_DISTANCE_CONFIG.DEFAULT)
-  const [isGeocoding, setIsGeocoding] = useState(false)
   const [geocodingError, setGeocodingError] = useState<string | null>(null)
   const [originError, setOriginError] = useState<string | null>(null)
   const [destinationError, setDestinationError] = useState<string | null>(null)
@@ -30,6 +46,15 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
     ...option,
     icon: getPreferenceIconAlt(option.value),
   }))
+
+  // Update form when initial values change externally
+  useEffect(() => {
+    if (initialOrigin) setOrigin(initialOrigin)
+  }, [initialOrigin])
+
+  useEffect(() => {
+    if (initialDestination) setDestination(initialDestination)
+  }, [initialDestination])
 
 
   const handlePreferenceChange = (preference: string) => {
@@ -94,27 +119,33 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
     setDestinationError(null)
     setGeocodingError(null)
 
-    if (!origin.trim() || !destination.trim()) {
-      if (!origin.trim()) {
+    // Use initialOrigin/initialDestination if origin/destination are empty (they come from parent)
+    const finalOrigin = origin.trim() || initialOrigin.trim()
+    const finalDestination = destination.trim() || initialDestination.trim()
+
+    if (!finalOrigin || !finalDestination) {
+      if (!finalOrigin) {
         setOriginError('Please select an origin address')
       }
-      if (!destination.trim()) {
+      if (!finalDestination) {
         setDestinationError('Please select a destination address')
       }
       return
     }
 
-    setIsGeocoding(true)
+    onGeocodingChange?.(true)
 
     try {
       // Geocode both addresses in parallel
       const [originPoint, destinationPoint] = await Promise.all([
-        geocodeAddress(origin).catch((error) => {
-          setOriginError(error instanceof Error ? error.message : 'Failed to geocode origin')
+        geocodeAddress(finalOrigin).catch((error) => {
+          const errorMsg = error instanceof Error ? error.message : 'Failed to geocode origin'
+          setOriginError(errorMsg)
           throw error
         }),
-        geocodeAddress(destination).catch((error) => {
-          setDestinationError(error instanceof Error ? error.message : 'Failed to geocode destination')
+        geocodeAddress(finalDestination).catch((error) => {
+          const errorMsg = error instanceof Error ? error.message : 'Failed to geocode destination'
+          setDestinationError(errorMsg)
           throw error
         }),
       ])
@@ -135,7 +166,7 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
       setGeocodingError(errorMessage)
       console.error('Geocoding error:', error)
     } finally {
-      setIsGeocoding(false)
+      onGeocodingChange?.(false)
     }
   }
 
@@ -147,46 +178,7 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
     >
-      {/* Origin and Destination */}
-      <div className="space-y-4">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-        >
-          <AddressAutocomplete
-            value={origin}
-            onChange={(value) => {
-              setOrigin(value)
-              setOriginError(null)
-            }}
-            placeholder="Select or search for origin..."
-            label="Origin"
-            icon={<MapPin className="w-4 h-4 mr-2 text-primary-600" />}
-            error={originError}
-            required
-          />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.4 }}
-        >
-          <AddressAutocomplete
-            value={destination}
-            onChange={(value) => {
-              setDestination(value)
-              setDestinationError(null)
-            }}
-            placeholder="Select or search for destination..."
-            label="Destination"
-            icon={<Navigation className="w-4 h-4 mr-2 text-primary-600" />}
-            error={destinationError}
-            required
-          />
-        </motion.div>
-      </div>
+      {/* Origin and Destination - Now handled by parent component */}
 
       {/* Route Preferences */}
       <motion.div
@@ -194,13 +186,11 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.5 }}
       >
-        <label className="flex items-center text-sm font-semibold text-gray-700 mb-4">
-          <Settings className="w-4 h-4 mr-2 text-primary-600" />
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
           Route Preferences
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+        <div className="flex flex-wrap gap-2">
           {preferenceOptions.map((option, index) => {
-            const Icon = option.icon
             const isSelected = preferences.includes(option.value)
             return (
               <motion.button
@@ -209,34 +199,17 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
                 onClick={() => handlePreferenceChange(option.value)}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2, delay: 0.6 + index * 0.1 }}
+                transition={{ duration: 0.2, delay: 0.6 + index * 0.05 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className={cn(
-                  "p-2 sm:p-3 rounded-xl border-2 transition-all duration-300 relative overflow-hidden min-h-[60px] sm:min-h-[70px] flex flex-col items-center justify-center",
+                  "px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200",
                   isSelected
-                    ? 'border-primary-500/50 bg-primary-50/80 text-primary-700 shadow-lg'
-                    : 'border-white/40 hover:border-white/60 text-gray-700 hover:bg-white/50'
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-white/60 text-gray-700 hover:bg-white/80 border border-white/40'
                 )}
               >
-                <div className="text-center relative z-10">
-                  <div className={cn(
-                    "w-6 h-6 mx-auto mb-1 rounded-lg flex items-center justify-center text-white",
-                    `bg-gradient-to-br ${option.color}`
-                  )}>
-                    <Icon className="w-3 h-3" />
-                  </div>
-                  <div className="text-xs font-medium leading-tight">{option.label}</div>
-                </div>
-                {isSelected && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute top-1 right-1 w-3 h-3 bg-primary-500 rounded-full flex items-center justify-center"
-                  >
-                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                  </motion.div>
-                )}
+                {option.label}
               </motion.button>
             )
           })}
@@ -255,16 +228,17 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
         />
       </motion.div>
 
-      {/* Max Walking Distance */}
+      {/* Max Walking Distance Slider */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.9 }}
+        className="sm:glass-input"
       >
-        <label className="block text-sm font-semibold text-gray-700 mb-3">
-          Max Walking Distance
+        <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2">
+          Max Walking Distance Slider
         </label>
-        <div className="glass-card p-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <input
             type="range"
             min={WALKING_DISTANCE_CONFIG.MIN}
@@ -272,13 +246,15 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
             step={WALKING_DISTANCE_CONFIG.STEP}
             value={maxWalkingDistance}
             onChange={(e) => setMaxWalkingDistance(Number(e.target.value))}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+            className="flex-1 h-1.5 sm:h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
           />
-          <div className="flex justify-between text-xs text-gray-600 mt-2">
-            <span>{WALKING_DISTANCE_CONFIG.MIN}m</span>
-            <span className="font-semibold text-primary-600">{maxWalkingDistance}m</span>
-            <span>{WALKING_DISTANCE_CONFIG.MAX}m</span>
-          </div>
+          <span className="text-xs sm:text-sm font-semibold text-primary-600 min-w-[50px] sm:min-w-[60px] text-right">
+            {maxWalkingDistance}m
+          </span>
+        </div>
+        <div className="hidden sm:flex justify-between text-xs text-gray-600 mt-1">
+          <span>{WALKING_DISTANCE_CONFIG.MIN}m</span>
+          <span>{WALKING_DISTANCE_CONFIG.MAX}m</span>
         </div>
       </motion.div>
 
@@ -304,55 +280,6 @@ const RouteForm: React.FC<RouteFormProps> = ({ onSubmit, isLoading }) => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Submit Button */}
-      <motion.button
-        type="submit"
-        disabled={isLoading || isGeocoding || !origin.trim() || !destination.trim()}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 1.0 }}
-        whileHover={{ scale: isLoading || isGeocoding ? 1 : 1.02 }}
-        whileTap={{ scale: isLoading || isGeocoding ? 1 : 0.98 }}
-        className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
-      >
-        <AnimatePresence mode="wait">
-          {isGeocoding ? (
-            <motion.div
-              key="geocoding"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center"
-            >
-              <div className="loading-spinner mr-3" />
-              <span>Finding Locations...</span>
-            </motion.div>
-          ) : isLoading ? (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center"
-            >
-              <div className="loading-spinner mr-3" />
-              <span>Calculating Routes...</span>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="search"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center"
-            >
-              <Search className="w-5 h-5 mr-2" />
-              <span>Find Routes</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.button>
     </motion.form>
   )
 }

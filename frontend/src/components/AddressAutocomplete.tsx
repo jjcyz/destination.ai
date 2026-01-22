@@ -233,7 +233,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   const displayValue = value || searchQuery
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative z-50">
       <label className="flex items-center text-sm font-semibold text-gray-700 mb-3">
         {icon || <MapPin className="w-4 h-4 mr-2 text-primary-600" />}
         {label}
@@ -250,9 +250,8 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className={cn(
-            'input-field pr-10',
-            error && 'border-red-300 focus:border-red-500 focus:ring-red-500',
-            isOpen && 'rounded-b-none'
+            'input-field pr-10 rounded-xl',
+            error && 'border-red-300 focus:border-red-500 focus:ring-red-500'
           )}
           required={required}
           autoComplete="off"
@@ -287,7 +286,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="absolute z-50 w-full mt-0 glass-card-strong border-t-0 rounded-b-xl shadow-lg max-h-64 overflow-y-auto"
+            className="absolute z-[10000] w-full mt-0 bg-white border border-gray-200 border-t-0 rounded-b-xl shadow-2xl max-h-64 overflow-y-auto"
           >
             <div className="p-2">
               {/* Google Places results */}

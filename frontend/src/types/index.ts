@@ -23,6 +23,7 @@ export enum TransportMode {
   SKYTRAIN = 'skytrain',
   SEABUS = 'seabus',
   WESTCOAST_EXPRESS = 'westcoast_express',
+  RIDESHARE = 'rideshare',
 }
 
 /**

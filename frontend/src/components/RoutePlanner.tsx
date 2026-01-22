@@ -1,20 +1,28 @@
-import React, { useState, useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRoute } from '../contexts/RouteContext'
 import { useUser } from '../contexts/UserContext'
 import GoogleMapView from './GoogleMapView'
 import RouteForm from './RouteForm'
+import OriginDestination from './OriginDestination'
 import RealTimePanel from './RealTimePanel'
 import AlternativeRoutes from './AlternativeRoutes'
-import PredictiveNotifications from './PredictiveNotifications'
+import FavoritePlaces from './FavoritePlaces'
+import TopNavigation from './TopNavigation'
 import { routeAPI, configAPI } from '../services/api'
-import type { RouteRequest, Route } from '../types'
+import type { RouteRequest, Route, Point } from '../types'
 
 const RoutePlanner: React.FC = () => {
   const { state: routeState, dispatch: routeDispatch } = useRoute()
   const { state: userState, dispatch: userDispatch } = useUser()
-  const [showMap, setShowMap] = useState(true)
   const requestInProgressRef = useRef(false)
+  const [currentOrigin, setCurrentOrigin] = useState<Point | undefined>()
+  const [formOrigin, setFormOrigin] = useState('')
+  const [formDestination, setFormDestination] = useState('')
+  const [originError, setOriginError] = useState<string | null>(null)
+  const [destinationError, setDestinationError] = useState<string | null>(null)
+  const routeFormRef = useRef<HTMLDivElement>(null)
+  const [isGeocoding, setIsGeocoding] = useState(false)
 
   const handleRouteRequest = async (request: RouteRequest): Promise<void> => {
     // Prevent duplicate requests
@@ -51,7 +59,21 @@ const RoutePlanner: React.FC = () => {
       }
 
       routeDispatch({ type: 'SET_ROUTES', payload: response })
-      routeDispatch({ type: 'SET_LAST_REQUEST', payload: request })
+      routeDispatch({
+        type: 'SET_LAST_REQUEST',
+        payload: {
+          origin: request.origin,
+          destination: request.destination,
+          preferences: request.preferences
+        }
+      })
+
+      // Update current origin if it's from the form
+      if (!currentOrigin ||
+          (Math.abs(currentOrigin.lat - request.origin.lat) > 0.001 ||
+           Math.abs(currentOrigin.lng - request.origin.lng) > 0.001)) {
+        setCurrentOrigin(request.origin)
+      }
 
       // Calculate gamification rewards for the first route (non-blocking)
       if (response.routes.length > 0) {
@@ -105,190 +127,199 @@ const RoutePlanner: React.FC = () => {
     routeDispatch({ type: 'SELECT_ROUTE', payload: route })
   }
 
+  const handleFavoritePlaceSelect = async (place: { location: Point; address: string; name: string }) => {
+    // Set the destination in the form
+    setFormDestination(place.address)
+
+    // If we have an origin, calculate route immediately
+    if (currentOrigin) {
+      const request: RouteRequest = {
+        origin: currentOrigin,
+        destination: place.location,
+        preferences: routeState.lastRequest?.preferences || ['fastest'],
+        transport_modes: ['walking', 'biking', 'bus'],
+        max_walking_distance: 500,
+        avoid_highways: false,
+        accessibility_requirements: []
+      }
+      await handleRouteRequest(request)
+    }
+  }
+
+  const handleOriginChange = async (address: string) => {
+    setFormOrigin(address)
+    setOriginError(null)
+    if (address) {
+      try {
+        const point = await routeAPI.geocodeAddress(address)
+        setCurrentOrigin(point)
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to geocode origin'
+        setOriginError(errorMessage)
+        console.warn('Failed to geocode origin:', error)
+      }
+    }
+  }
+
+  const handleDestinationChange = (address: string) => {
+    setFormDestination(address)
+    setDestinationError(null)
+  }
+
+  const handleFormSubmit = () => {
+    // Trigger RouteForm submission by finding the form and submitting it
+    if (routeFormRef.current) {
+      const form = routeFormRef.current.querySelector('form') as HTMLFormElement
+      if (form) {
+        const submitEvent = new Event('submit', { bubbles: true, cancelable: true })
+        form.dispatchEvent(submitEvent)
+      }
+    }
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-      {/* Hero Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="text-center mb-8 sm:mb-12"
-      >
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 mb-4 sm:mb-6">
-          <span className="bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">Destination AI</span>
-        </h1>
-        <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed px-4">
-          AI-powered route planning for Vancouver. Find the best routes using multiple transportation modes.
-          Get real-time traffic, weather, and transit information with intelligent recommendations.
-        </p>
-      </motion.div>
+    <div className="min-h-screen">
+      {/* Side Navigation */}
+      <TopNavigation />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-6">
+        {/* Title */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-6 sm:mb-8"
+        >
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
+            <span className="bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">Destination AI</span>
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-2">
+            AI-powered route planning for Vancouver
+          </p>
+        </motion.div>
 
       {/* Mobile-first responsive layout */}
-      <div className="space-y-6 lg:space-y-8">
-        {/* Top Row - Form and Notifications (Mobile: stacked, Desktop: side by side) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Route Form */}
+      <div className="space-y-4 sm:space-y-6">
+        {/* Origin/Destination and Favorite Places Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* Origin and Destination - Standalone Component */}
+          <div className="lg:col-span-2">
+            <OriginDestination
+              origin={formOrigin}
+              destination={formDestination}
+              onOriginChange={handleOriginChange}
+              onDestinationChange={handleDestinationChange}
+              originError={originError}
+              destinationError={destinationError}
+              onSubmit={handleFormSubmit}
+              isLoading={routeState.isLoading}
+              isGeocoding={isGeocoding}
+            />
+          </div>
+
+          {/* Favorite Places */}
+          <div className="lg:col-span-1">
+            <FavoritePlaces
+              onSelectPlace={handleFavoritePlaceSelect}
+              currentOrigin={currentOrigin}
+            />
+          </div>
+        </div>
+
+        {/* Map and Updates Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* Map */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:col-span-2"
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="lg:col-span-2 glass-card-strong p-4 sm:p-6"
           >
-            <div className="glass-card-strong p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                <div className="w-2 h-2 bg-primary-500 rounded-full mr-3" />
-                Plan Your Route
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center">
+                <div className="w-2 h-2 bg-secondary-500 rounded-full mr-3" />
+                Route Map
               </h2>
-              <RouteForm onSubmit={handleRouteRequest} isLoading={routeState.isLoading} />
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="hidden sm:inline">Live</span>
+              </div>
+            </div>
+
+            <div className="h-[400px] sm:h-[500px] lg:h-[600px] min-h-[300px]">
+              <GoogleMapView
+                routes={routeState.currentRoutes}
+                selectedRoute={routeState.selectedRoute}
+                lastRequest={routeState.lastRequest}
+                apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}
+              />
             </div>
           </motion.div>
 
-          {/* Predictive Notifications */}
+          {/* Real-time Updates & Alerts */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
             className="lg:col-span-1"
           >
-            <PredictiveNotifications />
+            <RealTimePanel />
           </motion.div>
         </div>
 
-        {/* Middle Row - Map */}
+        {/* Route Results */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="glass-card-strong p-6"
+          transition={{ duration: 0.5, delay: 0.5 }}
         >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-              <div className="w-2 h-2 bg-secondary-500 rounded-full mr-3" />
-              Route Map
-            </h2>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="hidden sm:inline">Live Updates</span>
-              </div>
-              <button
-                onClick={() => setShowMap(!showMap)}
-                className="btn-glass text-sm"
-              >
-                {showMap ? 'Hide Map' : 'Show Map'}
-              </button>
-            </div>
-          </div>
-
           <AnimatePresence>
-            {showMap && (
+            {routeState.currentRoutes.length > 0 && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                className="h-[500px] sm:h-[600px] lg:h-[800px] xl:h-[900px] min-h-[200px]"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -30 }}
+                transition={{ duration: 0.5 }}
+                className="glass-card-strong p-4 sm:p-6"
               >
-                <GoogleMapView
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center">
+                  <div className="w-2 h-2 bg-accent-500 rounded-full mr-3" />
+                  Route Options
+                </h2>
+                <AlternativeRoutes
                   routes={routeState.currentRoutes}
                   selectedRoute={routeState.selectedRoute}
-                  lastRequest={routeState.lastRequest}
-                  apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}
+                  onRouteSelect={handleRouteSelect}
                 />
               </motion.div>
             )}
           </AnimatePresence>
         </motion.div>
 
-        {/* Bottom Row - Results and Real-time Updates */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Route Results */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="lg:col-span-2"
-          >
-            <AnimatePresence>
-              {routeState.currentRoutes.length > 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -30 }}
-                  transition={{ duration: 0.5 }}
-                  className="glass-card-strong p-6"
-                >
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                    <div className="w-2 h-2 bg-accent-500 rounded-full mr-3" />
-                    Route Options
-                  </h2>
-                  <AlternativeRoutes
-                    routes={routeState.currentRoutes}
-                    selectedRoute={routeState.selectedRoute}
-                    onRouteSelect={handleRouteSelect}
-                  />
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="glass-card-strong p-6 text-center"
-                >
-                  <div className="text-gray-400 mb-4">
-                    <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Ready to Plan Your Route?</h3>
-                  <p className="text-gray-600">Enter your origin and destination above to see route options.</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-
-          {/* Real-time Updates Panel */}
+        {/* Route Preferences Form - Last Component */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* Route Form */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.6 }}
-            className="lg:col-span-1"
+            className="lg:col-span-3"
           >
-            <RealTimePanel />
+            <div className="glass-card-strong p-4 sm:p-6" ref={routeFormRef}>
+              <RouteForm
+                onSubmit={handleRouteRequest}
+                isLoading={routeState.isLoading}
+                onOriginChange={handleOriginChange}
+                onDestinationChange={handleDestinationChange}
+                initialOrigin={formOrigin}
+                initialDestination={formDestination}
+                isGeocoding={isGeocoding}
+                onGeocodingChange={setIsGeocoding}
+              />
+            </div>
           </motion.div>
         </div>
       </div>
-
-      {/* Quick Tips */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.8 }}
-        className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6"
-      >
-        <div className="glass-card p-6 text-center">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white text-xl">⚡</span>
-          </div>
-          <h3 className="font-semibold text-gray-900 mb-2">Fast Routes</h3>
-          <p className="text-sm text-gray-600">Get the quickest path to your destination with real-time traffic data</p>
-        </div>
-
-        <div className="glass-card p-6 text-center">
-          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white text-xl">🌱</span>
-          </div>
-          <h3 className="font-semibold text-gray-900 mb-2">Eco-Friendly</h3>
-          <p className="text-sm text-gray-600">Choose sustainable transportation options and earn rewards</p>
-        </div>
-
-        <div className="glass-card p-6 text-center">
-          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white text-xl">🎯</span>
-          </div>
-          <h3 className="font-semibold text-gray-900 mb-2">Smart Planning</h3>
-          <p className="text-sm text-gray-600">AI-powered recommendations based on weather, events, and preferences</p>
-        </div>
-      </motion.div>
 
       {/* Error Display */}
       <AnimatePresence>
@@ -297,7 +328,7 @@ const RoutePlanner: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="mt-6 glass-card border-l-4 border-red-500 bg-red-50/80"
+            className="mt-4 sm:mt-6 glass-card border-l-4 border-red-500 bg-red-50/80 p-4"
           >
             <div className="flex items-start">
               <div className="flex-shrink-0">
@@ -315,6 +346,7 @@ const RoutePlanner: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   )
 }

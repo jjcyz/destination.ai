@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useUser } from '../contexts/UserContext'
 import { BarChart3, TrendingUp, Leaf, Award, Target, Zap } from 'lucide-react'
 import { gamificationAPI } from '../services/api'
+import TopNavigation from './TopNavigation'
 
 const Dashboard: React.FC = () => {
   const { state: userState } = useUser()
@@ -86,7 +87,9 @@ const Dashboard: React.FC = () => {
 
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 space-y-6">
+    <div className="min-h-screen">
+      <TopNavigation />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-6 space-y-4 sm:space-y-6">
       {/* Page Header */}
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -256,6 +259,7 @@ const Dashboard: React.FC = () => {
             <span className="text-xs text-gray-400">3 days ago</span>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

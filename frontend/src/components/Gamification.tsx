@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useUser } from '../contexts/UserContext'
 import { Trophy, Award, Target, Star, Crown, Gem } from 'lucide-react'
 import { gamificationAPI } from '../services/api'
+import TopNavigation from './TopNavigation'
 
 const Gamification: React.FC = () => {
   const { state: userState } = useUser()
@@ -103,7 +104,9 @@ const Gamification: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen">
+      <TopNavigation />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-6 space-y-4 sm:space-y-6">
       {/* Page Header */}
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -305,6 +308,7 @@ const Gamification: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

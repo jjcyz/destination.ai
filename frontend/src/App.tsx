@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import Header from './components/Header'
 import RoutePlanner from './components/RoutePlanner'
 import Dashboard from './components/Dashboard'
 import Gamification from './components/Gamification'
@@ -30,13 +29,11 @@ function App() {
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-purple-200/20 rounded-full blur-xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
               </div>
 
-              <Header />
-
               <motion.main
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="relative z-10 pt-32 sm:pt-36"
+                className="relative z-10"
               >
                 <Routes>
                   <Route path="/" element={<RoutePlanner />} />

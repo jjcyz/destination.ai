@@ -51,6 +51,13 @@ const transportModeOptions = [
     color: 'from-indigo-500 to-indigo-600',
     description: 'Rapid transit system'
   },
+  {
+    value: 'rideshare',
+    label: 'Ride-Share',
+    icon: '🚕',
+    color: 'from-pink-500 to-rose-600',
+    description: 'Uber, Lyft, and similar services'
+  },
 ]
 
 const ModeSelector: React.FC<ModeSelectorProps> = ({
@@ -80,7 +87,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
         {transportModeOptions.map((mode, index) => {
           const isSelected = selectedModes.includes(mode.value)
 
@@ -93,7 +100,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({
               animate={{ opacity: 1, scale: 1 }}
               transition={{
                 duration: 0.3,
-                delay: index * 0.1,
+                delay: index * 0.05,
                 type: "spring",
                 stiffness: 200
               }}
@@ -106,8 +113,8 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({
                 transition: { duration: 0.1 }
               }}
               className={cn(
-                "relative p-4 rounded-2xl border-2 transition-all duration-300 group",
-                "min-h-[80px] flex flex-col items-center justify-center",
+                "relative p-2 sm:p-3 rounded-xl border-2 transition-all duration-300 group",
+                "min-h-[60px] sm:min-h-[70px] flex flex-col items-center justify-center",
                 isSelected
                   ? 'border-primary-500/50 bg-primary-50/80 text-primary-700 shadow-lg'
                   : 'border-white/40 hover:border-white/60 text-gray-700 hover:bg-white/50'
@@ -115,7 +122,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({
             >
               {/* Background gradient effect */}
               <div className={cn(
-                "absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300",
+                "absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300",
                 `bg-gradient-to-br ${mode.color}`,
                 isSelected ? "opacity-10" : "group-hover:opacity-5"
               )} />
@@ -123,36 +130,17 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({
               {/* Content */}
               <div className="relative z-10 text-center">
                 <motion.div
-                  className="text-2xl mb-2"
+                  className="text-lg sm:text-xl mb-1"
                   animate={isSelected ? { scale: [1, 1.1, 1] } : {}}
                   transition={{ duration: 0.3 }}
                 >
                   {mode.icon}
                 </motion.div>
-                <div className="text-sm font-medium leading-tight">
+                <div className="text-xs sm:text-sm font-medium leading-tight">
                   {mode.label}
                 </div>
               </div>
 
-              {/* Selection indicator */}
-              <AnimatePresence>
-                {isSelected && (
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute top-2 right-2 w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center shadow-lg"
-                  >
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.1, duration: 0.2 }}
-                      className="w-2 h-2 bg-white rounded-full"
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               {/* Hover tooltip */}
               <motion.div
@@ -166,46 +154,6 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({
             </motion.button>
           )
         })}
-      </div>
-
-      {/* Quick select buttons */}
-      <div className="flex flex-wrap gap-2 pt-2">
-        <motion.button
-          type="button"
-          onClick={() => onModeChange(['walking', 'biking'])}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
-        >
-          Eco-Friendly
-        </motion.button>
-        <motion.button
-          type="button"
-          onClick={() => onModeChange(['car'])}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-full hover:bg-red-200 transition-colors"
-        >
-          Fastest
-        </motion.button>
-        <motion.button
-          type="button"
-          onClick={() => onModeChange(['bus', 'skytrain'])}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="px-3 py-1.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors"
-        >
-          Public Transit
-        </motion.button>
-        <motion.button
-          type="button"
-          onClick={() => onModeChange(transportModeOptions.map(m => m.value))}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
-        >
-          All Modes
-        </motion.button>
       </div>
     </motion.div>
   )

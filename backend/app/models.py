@@ -20,6 +20,7 @@ class TransportMode(str, Enum):
     SKYTRAIN = "skytrain"
     SEABUS = "seabus"
     WESTCOAST_EXPRESS = "westcoast_express"
+    RIDESHARE = "rideshare"
 
 
 class RoutePreference(str, Enum):
