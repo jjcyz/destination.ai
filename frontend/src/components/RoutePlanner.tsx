@@ -8,6 +8,7 @@ import OriginDestination from './OriginDestination'
 import RealTimePanel from './RealTimePanel'
 import AlternativeRoutes from './AlternativeRoutes'
 import FavoritePlaces from './FavoritePlaces'
+import PopularDestinations from './PopularDestinations'
 import TopNavigation from './TopNavigation'
 import { routeAPI, configAPI } from '../services/api'
 import type { RouteRequest, Route, Point } from '../types'
@@ -166,6 +167,22 @@ const RoutePlanner: React.FC = () => {
     setDestinationError(null)
   }
 
+  const handleSwap = () => {
+    // Swap the origin and destination values
+    const tempOrigin = formOrigin
+    const tempDestination = formDestination
+
+    setFormOrigin(tempDestination)
+    setFormDestination(tempOrigin)
+
+    // Swap errors as well
+    const tempOriginError = originError
+    const tempDestinationError = destinationError
+
+    setOriginError(tempDestinationError)
+    setDestinationError(tempOriginError)
+  }
+
   const handleFormSubmit = () => {
     // Trigger RouteForm submission by finding the form and submitting it
     if (routeFormRef.current) {
@@ -210,6 +227,7 @@ const RoutePlanner: React.FC = () => {
             originError={originError}
             destinationError={destinationError}
             onSubmit={handleFormSubmit}
+            onSwap={handleSwap}
             isLoading={routeState.isLoading}
             isGeocoding={isGeocoding}
           />
@@ -220,6 +238,13 @@ const RoutePlanner: React.FC = () => {
           <FavoritePlaces
             onSelectPlace={handleFavoritePlaceSelect}
             currentOrigin={currentOrigin}
+          />
+        </div>
+
+        {/* Popular Destinations Carousel - Full Width */}
+        <div className="lg:col-span-3">
+          <PopularDestinations
+            onSelectDestination={handleFavoritePlaceSelect}
           />
         </div>
 

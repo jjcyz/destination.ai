@@ -1,14 +1,44 @@
 import React, { useState, useEffect } from 'react'
 import { useUser } from '../contexts/UserContext'
-import { BarChart3, TrendingUp, Leaf, Award, Target, Zap } from 'lucide-react'
+import { BarChart3, TrendingUp, Leaf, Award, Target, Zap, MapPin } from 'lucide-react'
 import { gamificationAPI } from '../services/api'
 import TopNavigation from './TopNavigation'
+import { useNavigate } from 'react-router-dom'
+
+const FEATURED_DESTINATIONS = [
+  {
+    id: 'stanley-park',
+    name: 'Stanley Park',
+    image: '/images/Stanley-Park.png',
+    description: 'Urban park with trails',
+  },
+  {
+    id: 'granville-island',
+    name: 'Granville Island',
+    image: '/images/Granville-Island.png',
+    description: 'Public market',
+  },
+  {
+    id: 'gastown',
+    name: 'Gastown',
+    image: '/images/Gastown.png',
+    description: 'Historic district',
+  },
+  {
+    id: 'science-world',
+    name: 'Science World',
+    image: '/images/Science-World.png',
+    description: 'Science museum',
+  }
+]
 
 const Dashboard: React.FC = () => {
   const { state: userState } = useUser()
+  const navigate = useNavigate()
   const [challenges, setChallenges] = useState<any[]>([])
   const [tips, setTips] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     // Load dashboard data
@@ -73,6 +103,14 @@ const Dashboard: React.FC = () => {
   const totalPoints = userState.profile.total_sustainability_points || 0
   const progressToNextLevel = totalPoints % 100
   const pointsNeeded = 100 - progressToNextLevel
+
+  const handleImageError = (id: string) => {
+    setImageErrors(prev => ({ ...prev, [id]: true }))
+  }
+
+  const handleDestinationClick = () => {
+    navigate('/')
+  }
 
   if (isLoading) {
     return (
@@ -219,6 +257,47 @@ const Dashboard: React.FC = () => {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Featured Destinations */}
+      <div className="card">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <MapPin className="w-5 h-5 mr-2" />
+          Explore Vancouver
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {FEATURED_DESTINATIONS.map((destination) => (
+            <button
+              key={destination.id}
+              onClick={handleDestinationClick}
+              className="group relative overflow-hidden rounded-xl bg-white hover:shadow-lg transition-all duration-300"
+            >
+              <div className="relative h-32 overflow-hidden bg-gray-100">
+                {!imageErrors[destination.id] ? (
+                  <img
+                    src={destination.image}
+                    alt={destination.name}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                    onError={() => handleImageError(destination.id)}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-100 to-accent-100">
+                    <MapPin className="w-8 h-8 text-primary-600 opacity-50" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                <div className="absolute bottom-2 left-2 right-2">
+                  <h4 className="font-semibold text-white text-sm drop-shadow-lg">
+                    {destination.name}
+                  </h4>
+                  <p className="text-xs text-white/90 drop-shadow-md">
+                    {destination.description}
+                  </p>
+                </div>
+              </div>
+            </button>
+          ))}
         </div>
       </div>
 

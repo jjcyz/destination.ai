@@ -189,32 +189,30 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
     )
   }
 
-  if (!apiKey) {
-    return (
-      <div style={containerStyle} className="flex items-center justify-center bg-gray-100 rounded-xl">
-        <div className="text-center">
-          <p className="text-red-600 font-medium">Google Maps API key not configured</p>
-          <p className="text-gray-500 text-sm mt-2">Please add VITE_GOOGLE_MAPS_API_KEY to your .env file</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <GoogleMap
-      mapContainerStyle={containerStyle}
-      center={vancouverCenter}
-      zoom={12}
-      onLoad={onLoad}
-      onUnmount={onUnmount}
-      options={{
-        zoomControl: true,
-        streetViewControl: false,
-        mapTypeControl: false,
-        fullscreenControl: true,
-        disableDefaultUI: false,
-      }}
-    >
+    <div className="relative w-full h-full">
+      {/* API Key Error Message */}
+      {!apiKey && (
+        <div className="absolute top-4 left-4 z-[1001] bg-red-50 border border-red-200 rounded-lg p-3 shadow-md max-w-sm">
+          <p className="text-red-600 font-semibold text-sm">⚠️ Google Maps API key not configured</p>
+          <p className="text-red-700 text-xs mt-1">Add VITE_GOOGLE_MAPS_API_KEY to .env</p>
+        </div>
+      )}
+
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={vancouverCenter}
+        zoom={12}
+        onLoad={onLoad}
+        onUnmount={onUnmount}
+        options={{
+          zoomControl: true,
+          streetViewControl: false,
+          mapTypeControl: false,
+          fullscreenControl: true,
+          disableDefaultUI: false,
+        }}
+      >
         {/* Origin Marker */}
         {lastRequest?.origin && (
           <Marker
@@ -384,6 +382,7 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
           </div>
         )}
       </GoogleMap>
+    </div>
   )
 }
 
