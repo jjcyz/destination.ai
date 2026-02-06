@@ -9,6 +9,7 @@ import { DEFAULT_PREFERENCES, DEFAULT_TRANSPORT_MODES, WALKING_DISTANCE_CONFIG, 
 import { routeAPI } from '../services/api'
 import { getCachedGeocode, cacheGeocode } from '../utils/geocodingCache'
 import { getPreferenceIconAlt } from '../utils/routePreferences'
+import { saveFormState, loadFormState } from '../utils/formPersistence'
 
 interface RouteFormProps {
   onSubmit: (request: RouteRequest) => void
@@ -41,6 +42,16 @@ const RouteForm: React.FC<RouteFormProps> = ({
   const [geocodingError, setGeocodingError] = useState<string | null>(null)
   const [originError, setOriginError] = useState<string | null>(null)
   const [destinationError, setDestinationError] = useState<string | null>(null)
+
+  // Load persisted form state on mount
+  useEffect(() => {
+    const savedState = loadFormState()
+    if (savedState) {
+      setPreferences(savedState.preferences)
+      setTransportModes(savedState.transportModes)
+      setMaxWalkingDistance(savedState.maxWalkingDistance)
+    }
+  }, [])
 
   const preferenceOptions = ROUTE_PREFERENCE_OPTIONS.map((option) => ({
     ...option,
@@ -149,6 +160,15 @@ const RouteForm: React.FC<RouteFormProps> = ({
           throw error
         }),
       ])
+
+      // Save form state for next time
+      saveFormState({
+        origin: finalOrigin,
+        destination: finalDestination,
+        preferences,
+        transportModes,
+        maxWalkingDistance
+      })
 
       const request: RouteRequest = {
         origin: originPoint,

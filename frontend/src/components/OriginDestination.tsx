@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Navigation, Search, ArrowUpDown } from 'lucide-react'
+import { MapPin, Navigation, ArrowUpDown, Crosshair, Loader2 } from 'lucide-react'
 import AddressAutocomplete from './AddressAutocomplete'
 
 interface OriginDestinationProps {
@@ -28,11 +28,57 @@ const OriginDestination: React.FC<OriginDestinationProps> = ({
   isLoading = false,
   isGeocoding = false
 }) => {
+  const [isGettingLocation, setIsGettingLocation] = useState(false)
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (onSubmit) {
       onSubmit()
     }
+  }
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser')
+      return
+    }
+
+    setIsGettingLocation(true)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude
+        const lng = position.coords.longitude
+
+        // Reverse geocode to get address
+        try {
+          const response = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`
+          )
+          const data = await response.json()
+
+          if (data.results && data.results[0]) {
+            onOriginChange(data.results[0].formatted_address)
+          } else {
+            onOriginChange(`${lat.toFixed(6)}, ${lng.toFixed(6)}`)
+          }
+        } catch (error) {
+          console.error('Reverse geocoding failed:', error)
+          onOriginChange(`${lat.toFixed(6)}, ${lng.toFixed(6)}`)
+        } finally {
+          setIsGettingLocation(false)
+        }
+      },
+      (error) => {
+        console.error('Error getting location:', error)
+        alert('Unable to get your location. Please enable location services.')
+        setIsGettingLocation(false)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    )
   }
 
   return (
@@ -46,56 +92,6 @@ const OriginDestination: React.FC<OriginDestinationProps> = ({
         <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center">
           Plan Your Route
         </h2>
-
-        {/* Submit Button - Top Right */}
-        {onSubmit && (
-          <motion.button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={isLoading || isGeocoding || !origin.trim() || !destination.trim()}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
-            whileHover={{ scale: isLoading || isGeocoding ? 1 : 1.05 }}
-            whileTap={{ scale: isLoading || isGeocoding ? 1 : 0.95 }}
-            className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden text-sm flex items-center gap-2"
-          >
-            <AnimatePresence mode="wait">
-              {isGeocoding ? (
-                <motion.div
-                  key="geocoding"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex items-center justify-center"
-                >
-                  <div className="loading-spinner" />
-                </motion.div>
-              ) : isLoading ? (
-                <motion.div
-                  key="loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex items-center justify-center"
-                >
-                  <div className="loading-spinner" />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="search"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex items-center"
-                >
-                  <Search className="w-4 h-4 mr-1" />
-                  <span>Find Routes</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
-        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -105,15 +101,37 @@ const OriginDestination: React.FC<OriginDestinationProps> = ({
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
           >
-            <AddressAutocomplete
-              value={origin}
-              onChange={onOriginChange}
-              placeholder="Select or search for origin..."
-              label="Origin"
-              icon={<MapPin className="w-4 h-4 mr-2 text-primary-600" />}
-              error={originError}
-              required
-            />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <AddressAutocomplete
+                  value={origin}
+                  onChange={onOriginChange}
+                  placeholder="Select or search for origin..."
+                  label="Origin"
+                  icon={<MapPin className="w-4 h-4 mr-2 text-primary-600" />}
+                  error={originError}
+                  required
+                />
+              </div>
+              <div className="pt-8">
+                <motion.button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  disabled={isGettingLocation || isLoading || isGeocoding}
+                  whileHover={{ scale: isGettingLocation ? 1 : 1.05 }}
+                  whileTap={{ scale: isGettingLocation ? 1 : 0.95 }}
+                  className="p-3 bg-primary-50 hover:bg-primary-100 border-2 border-primary-200 hover:border-primary-400 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Use current location"
+                  title="Use current location"
+                >
+                  {isGettingLocation ? (
+                    <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />
+                  ) : (
+                    <Crosshair className="w-5 h-5 text-primary-600" />
+                  )}
+                </motion.button>
+              </div>
+            </div>
           </motion.div>
 
           {/* Swap Button */}

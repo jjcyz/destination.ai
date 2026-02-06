@@ -291,10 +291,18 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             <div className="p-2">
               {/* Google Places results */}
               {isLoadingPlaces && (
-                <div className="px-4 py-3 flex items-center justify-center text-gray-500">
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  <span className="text-sm">Searching...</span>
-                </div>
+                <>
+                  {/* Skeleton loading state */}
+                  {[1, 2, 3].map((i) => (
+                    <div key={`skeleton-${i}`} className="px-4 py-3 rounded-lg animate-pulse flex items-center space-x-3">
+                      <div className="w-5 h-5 bg-gray-200 rounded-full"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  ))}
+                </>
               )}
 
               {googlePlacesResults.map((result, index) => (

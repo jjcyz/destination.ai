@@ -60,50 +60,62 @@ const FavoritePlaces: React.FC<FavoritePlacesProps> = ({ onSelectPlace, currentO
     }
   }, [])
 
-  // Calculate route times when origin changes
+  // Calculate route times when origin changes - with parallel requests and debouncing
   useEffect(() => {
     if (!currentOrigin || favorites.length === 0) return
 
-    const calculateRouteTimes = async () => {
-      const times: Record<string, { time: number; distance: number; loading: boolean }> = {}
-      favorites.forEach(fav => {
-        times[fav.id] = { time: 0, distance: 0, loading: true }
-      })
-      setRouteTimes(times)
+    // Debounce to avoid recalculating too frequently
+    const debounceTimer = setTimeout(() => {
+      const calculateRouteTimes = async () => {
+        const times: Record<string, { time: number; distance: number; loading: boolean }> = {}
+        favorites.forEach(fav => {
+          times[fav.id] = { time: 0, distance: 0, loading: true }
+        })
+        setRouteTimes(times)
 
-      for (const favorite of favorites) {
-        try {
-          const request: RouteRequest = {
-            origin: currentOrigin,
-            destination: favorite.location,
-            preferences: [...DEFAULT_PREFERENCES],
-            transport_modes: [...DEFAULT_TRANSPORT_MODES],
-            max_walking_distance: WALKING_DISTANCE_CONFIG.DEFAULT,
-            avoid_highways: false,
-            accessibility_requirements: []
-          }
-
-          const response = await routeAPI.calculateRoute(request)
-          if (response.routes.length > 0) {
-            const fastestRoute = response.routes[0]
-            times[favorite.id] = {
-              time: fastestRoute.total_time,
-              distance: fastestRoute.total_distance,
-              loading: false
+        // Calculate routes in parallel for better performance
+        const routePromises = favorites.map(async (favorite) => {
+          try {
+            const request: RouteRequest = {
+              origin: currentOrigin,
+              destination: favorite.location,
+              preferences: [...DEFAULT_PREFERENCES],
+              transport_modes: [...DEFAULT_TRANSPORT_MODES],
+              max_walking_distance: WALKING_DISTANCE_CONFIG.DEFAULT,
+              avoid_highways: false,
+              accessibility_requirements: []
             }
-          } else {
-            times[favorite.id] = { time: 0, distance: 0, loading: false }
+
+            const response = await routeAPI.calculateRoute(request)
+            if (response.routes.length > 0) {
+              const fastestRoute = response.routes[0]
+              return {
+                id: favorite.id,
+                time: fastestRoute.total_time,
+                distance: fastestRoute.total_distance,
+                loading: false
+              }
+            }
+            return { id: favorite.id, time: 0, distance: 0, loading: false }
+          } catch (error) {
+            console.warn(`Failed to calculate route to ${favorite.name}:`, error)
+            return { id: favorite.id, time: 0, distance: 0, loading: false }
           }
-        } catch (error) {
-          console.warn(`Failed to calculate route to ${favorite.name}:`, error)
-          times[favorite.id] = { time: 0, distance: 0, loading: false }
-        }
+        })
+
+        // Wait for all routes to complete
+        const results = await Promise.all(routePromises)
+        const updatedTimes: Record<string, { time: number; distance: number; loading: boolean }> = {}
+        results.forEach(result => {
+          updatedTimes[result.id] = result
+        })
+        setRouteTimes(updatedTimes)
       }
 
-      setRouteTimes({ ...times })
-    }
+      calculateRouteTimes()
+    }, 300) // 300ms debounce
 
-    calculateRouteTimes()
+    return () => clearTimeout(debounceTimer)
   }, [currentOrigin, favorites])
 
   const formatTime = (seconds: number): string => {

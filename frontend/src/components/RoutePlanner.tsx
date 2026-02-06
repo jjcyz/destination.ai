@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Search, ArrowUpDown } from 'lucide-react'
 import { useRoute } from '../contexts/RouteContext'
 import { useUser } from '../contexts/UserContext'
 import GoogleMapView from './GoogleMapView'
@@ -10,6 +11,7 @@ import AlternativeRoutes from './AlternativeRoutes'
 import FavoritePlaces from './FavoritePlaces'
 import PopularDestinations from './PopularDestinations'
 import TopNavigation from './TopNavigation'
+import OfflineIndicator from './OfflineIndicator'
 import { routeAPI, configAPI } from '../services/api'
 import type { RouteRequest, Route, Point } from '../types'
 
@@ -195,11 +197,22 @@ const RoutePlanner: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Side Navigation */}
+    <div className="min-h-screen pb-20 lg:pb-8">
+      {/* Skip to main content - Accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[200] focus:top-4 focus:left-4 focus:bg-primary-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
+      {/* Navigation */}
       <TopNavigation />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-6">
+      {/* Offline Indicator */}
+      <OfflineIndicator />
+
+      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-6" role="main">
         {/* Title */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -275,6 +288,14 @@ const RoutePlanner: React.FC = () => {
           >
             <RealTimePanel />
           </motion.div>
+        </div>
+
+        {/* Live region for screen readers */}
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {routeState.isLoading && 'Calculating routes...'}
+          {!routeState.isLoading && routeState.currentRoutes.length > 0 &&
+            `Found ${routeState.currentRoutes.length} route${routeState.currentRoutes.length > 1 ? 's' : ''}`}
+          {routeState.error && `Error: ${routeState.error}`}
         </div>
 
         {/* Route Results */}
@@ -355,7 +376,131 @@ const RoutePlanner: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-      </div>
+      </main>
+
+      {/* Mobile Bottom Action Bar - One-handed friendly */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.2 }}
+        className="lg:hidden fixed bottom-16 left-0 right-0 z-[90] px-4 pb-4"
+        role="toolbar"
+        aria-label="Route planning actions"
+      >
+        <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/40 p-3 flex items-center gap-3">
+          {/* Swap Button */}
+          <motion.button
+            type="button"
+            onClick={handleSwap}
+            disabled={routeState.isLoading || isGeocoding}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-3 bg-white hover:bg-primary-50 border-2 border-primary-200 hover:border-primary-400 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Swap origin and destination"
+          >
+            <ArrowUpDown className="w-5 h-5 text-primary-600" />
+          </motion.button>
+
+          {/* Find Routes Button */}
+          <motion.button
+            type="button"
+            onClick={handleFormSubmit}
+            disabled={routeState.isLoading || isGeocoding || !formOrigin.trim() || !formDestination.trim()}
+            whileHover={{ scale: routeState.isLoading || isGeocoding ? 1 : 1.02 }}
+            whileTap={{ scale: routeState.isLoading || isGeocoding ? 1 : 0.98 }}
+            className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <AnimatePresence mode="wait">
+              {isGeocoding ? (
+                <motion.div
+                  key="geocoding"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-2"
+                >
+                  <div className="loading-spinner" />
+                  <span>Finding...</span>
+                </motion.div>
+              ) : routeState.isLoading ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-2"
+                >
+                  <div className="loading-spinner" />
+                  <span>Calculating...</span>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="search"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-2"
+                >
+                  <Search className="w-5 h-5" />
+                  <span>Find Routes</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </div>
+      </motion.div>
+
+      {/* Desktop Submit Button - Keep in OriginDestination for larger screens */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3, delay: 0.3 }}
+        className="hidden lg:block fixed top-24 right-4 z-[90]"
+      >
+        <motion.button
+          type="button"
+          onClick={handleFormSubmit}
+          disabled={routeState.isLoading || isGeocoding || !formOrigin.trim() || !formDestination.trim()}
+          whileHover={{ scale: routeState.isLoading || isGeocoding ? 1 : 1.05 }}
+          whileTap={{ scale: routeState.isLoading || isGeocoding ? 1 : 0.95 }}
+          className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-medium py-2.5 px-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          <AnimatePresence mode="wait">
+            {isGeocoding ? (
+              <motion.div
+                key="geocoding"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-2"
+              >
+                <div className="loading-spinner" />
+              </motion.div>
+            ) : routeState.isLoading ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-2"
+              >
+                <div className="loading-spinner" />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="search"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-2"
+              >
+                <Search className="w-5 h-5" />
+                <span>Find Routes</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.button>
+      </motion.div>
     </div>
   )
 }

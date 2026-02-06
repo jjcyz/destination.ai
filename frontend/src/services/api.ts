@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios'
+import axios, { AxiosError, AxiosRequestConfig } from 'axios'
 import type {
   RouteRequest,
   RouteResponse,
@@ -15,6 +15,11 @@ import type {
 } from '../types'
 import { API_CONFIG } from '../config'
 
+// Retry configuration
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000 // 1 second
+const RETRY_STATUS_CODES = [408, 429, 500, 502, 503, 504]
+
 const api = axios.create({
   baseURL: API_CONFIG.BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
@@ -22,6 +27,35 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 })
+
+// Retry helper function with exponential backoff
+const retryRequest = async (
+  error: AxiosError,
+  retryCount = 0
+): Promise<any> => {
+  const config = error.config as AxiosRequestConfig & { _retryCount?: number }
+
+  if (!config || retryCount >= MAX_RETRIES) {
+    return Promise.reject(error)
+  }
+
+  const statusCode = error.response?.status
+  if (statusCode && !RETRY_STATUS_CODES.includes(statusCode)) {
+    return Promise.reject(error)
+  }
+
+  // Exponential backoff: 1s, 2s, 4s
+  const delay = RETRY_DELAY * Math.pow(2, retryCount)
+
+  if (import.meta.env.DEV) {
+    console.log(`Retrying request (attempt ${retryCount + 1}/${MAX_RETRIES}) after ${delay}ms...`)
+  }
+
+  await new Promise(resolve => setTimeout(resolve, delay))
+
+  config._retryCount = retryCount + 1
+  return api.request(config)
+}
 
 // Request interceptor for logging (development only)
 api.interceptors.request.use(
@@ -41,7 +75,7 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor for error handling
+// Response interceptor for error handling with retry
 api.interceptors.response.use(
   (response) => {
     if (import.meta.env.DEV) {
@@ -50,11 +84,20 @@ api.interceptors.response.use(
     }
     return response
   },
-  (error) => {
+  async (error: AxiosError) => {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
-    console.error('API Response Error:', error.response?.data || error.message)
+    console.error('API Response Error:', error.message)
     }
+
+    const config = error.config as AxiosRequestConfig & { _retryCount?: number }
+    const retryCount = config?._retryCount || 0
+
+    // Attempt retry for retryable errors
+    if (error.response?.status && RETRY_STATUS_CODES.includes(error.response.status)) {
+      return retryRequest(error, retryCount)
+    }
+
     return Promise.reject(error)
   }
 )
