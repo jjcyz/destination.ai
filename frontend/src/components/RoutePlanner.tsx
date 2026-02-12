@@ -1,24 +1,27 @@
-import React, { useRef, useState } from 'react'
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, ArrowUpDown } from 'lucide-react'
 import { useRoute } from '../contexts/RouteContext'
 import { useUser } from '../contexts/UserContext'
-import GoogleMapView from './GoogleMapView'
 import RouteForm from './RouteForm'
 import OriginDestination from './OriginDestination'
-import RealTimePanel from './RealTimePanel'
-import AlternativeRoutes from './AlternativeRoutes'
-import FavoritePlaces from './FavoritePlaces'
-import PopularDestinations from './PopularDestinations'
 import TopNavigation from './TopNavigation'
 import OfflineIndicator from './OfflineIndicator'
 import { routeAPI, configAPI } from '../services/api'
 import type { RouteRequest, Route, Point } from '../types'
 
+const GoogleMapView = lazy(() => import('./GoogleMapView'))
+const RealTimePanel = lazy(() => import('./RealTimePanel'))
+const AlternativeRoutes = lazy(() => import('./AlternativeRoutes'))
+const FavoritePlaces = lazy(() => import('./FavoritePlaces'))
+const PopularDestinations = lazy(() => import('./PopularDestinations'))
+
 const RoutePlanner: React.FC = () => {
   const { state: routeState, dispatch: routeDispatch } = useRoute()
   const { state: userState, dispatch: userDispatch } = useUser()
   const requestInProgressRef = useRef(false)
+  const originGeocodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastOriginQueryRef = useRef<string>('')
   const [currentOrigin, setCurrentOrigin] = useState<Point | undefined>()
   const [formOrigin, setFormOrigin] = useState('')
   const [formDestination, setFormDestination] = useState('')
@@ -149,10 +152,26 @@ const RoutePlanner: React.FC = () => {
     }
   }
 
-  const handleOriginChange = async (address: string) => {
+  const handleOriginChange = (address: string) => {
     setFormOrigin(address)
     setOriginError(null)
-    if (address) {
+
+    if (originGeocodeTimerRef.current) {
+      clearTimeout(originGeocodeTimerRef.current)
+    }
+
+    if (!address.trim()) {
+      setCurrentOrigin(undefined)
+      return
+    }
+
+    originGeocodeTimerRef.current = setTimeout(async () => {
+      if (lastOriginQueryRef.current === address) {
+        return
+      }
+
+      lastOriginQueryRef.current = address
+
       try {
         const point = await routeAPI.geocodeAddress(address)
         setCurrentOrigin(point)
@@ -161,8 +180,16 @@ const RoutePlanner: React.FC = () => {
         setOriginError(errorMessage)
         console.warn('Failed to geocode origin:', error)
       }
-    }
+    }, 600)
   }
+
+  useEffect(() => {
+    return () => {
+      if (originGeocodeTimerRef.current) {
+        clearTimeout(originGeocodeTimerRef.current)
+      }
+    }
+  }, [])
 
   const handleDestinationChange = (address: string) => {
     setFormDestination(address)
@@ -248,17 +275,21 @@ const RoutePlanner: React.FC = () => {
 
         {/* Favorite Places */}
         <div className="lg:col-span-1 flex flex-col">
-          <FavoritePlaces
-            onSelectPlace={handleFavoritePlaceSelect}
-            currentOrigin={currentOrigin}
-          />
+          <Suspense fallback={<div className="glass-card-strong p-4 text-sm text-gray-500">Loading favorites...</div>}>
+            <FavoritePlaces
+              onSelectPlace={handleFavoritePlaceSelect}
+              currentOrigin={currentOrigin}
+            />
+          </Suspense>
         </div>
 
         {/* Popular Destinations Carousel - Full Width */}
         <div className="lg:col-span-3">
-          <PopularDestinations
-            onSelectDestination={handleFavoritePlaceSelect}
-          />
+          <Suspense fallback={<div className="glass-card-strong p-4 text-sm text-gray-500">Loading destinations...</div>}>
+            <PopularDestinations
+              onSelectDestination={handleFavoritePlaceSelect}
+            />
+          </Suspense>
         </div>
 
         {/* Map */}
@@ -269,12 +300,14 @@ const RoutePlanner: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="flex flex-col flex-1 min-h-[400px] sm:min-h-[500px] lg:min-h-[600px] rounded-2xl overflow-hidden"
           >
-            <GoogleMapView
-              routes={routeState.currentRoutes}
-              selectedRoute={routeState.selectedRoute}
-              lastRequest={routeState.lastRequest}
-              apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}
-            />
+            <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-500">Loading map...</div>}>
+              <GoogleMapView
+                routes={routeState.currentRoutes}
+                selectedRoute={routeState.selectedRoute}
+                lastRequest={routeState.lastRequest}
+                apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}
+              />
+            </Suspense>
           </motion.div>
         </div>
 
@@ -286,7 +319,9 @@ const RoutePlanner: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.4 }}
             className="h-full"
           >
-            <RealTimePanel />
+            <Suspense fallback={<div className="glass-card-strong p-4 text-sm text-gray-500">Loading updates...</div>}>
+              <RealTimePanel />
+            </Suspense>
           </motion.div>
         </div>
 
@@ -319,11 +354,13 @@ const RoutePlanner: React.FC = () => {
                   <div className="w-2 h-2 bg-accent-500 rounded-full mr-3" />
                   Route Options
                 </h2>
-                <AlternativeRoutes
-                  routes={routeState.currentRoutes}
-                  selectedRoute={routeState.selectedRoute}
-                  onRouteSelect={handleRouteSelect}
-                />
+                <Suspense fallback={<div className="text-sm text-gray-500">Loading route options...</div>}>
+                  <AlternativeRoutes
+                    routes={routeState.currentRoutes}
+                    selectedRoute={routeState.selectedRoute}
+                    onRouteSelect={handleRouteSelect}
+                  />
+                </Suspense>
               </motion.div>
             </AnimatePresence>
           </motion.div>

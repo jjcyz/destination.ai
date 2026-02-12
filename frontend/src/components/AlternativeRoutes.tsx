@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Clock, MapPin } from 'lucide-react'
 import { cn } from '../utils/cn'
@@ -24,20 +24,22 @@ const AlternativeRoutes: React.FC<AlternativeRoutesProps> = ({
   const [sortBy, setSortBy] = useState<'time' | 'distance' | 'sustainability' | 'cost'>('time')
 
 
-  const sortedRoutes = [...routes].sort((a, b) => {
-    switch (sortBy) {
-      case 'time':
-        return a.total_time - b.total_time
-      case 'distance':
-        return a.total_distance - b.total_distance
-      case 'sustainability':
-        return (b.energy_efficiency || 0) - (a.energy_efficiency || 0)
-      case 'cost':
-        return (a.total_sustainability_points || 0) - (b.total_sustainability_points || 0)
-      default:
-        return 0
-    }
-  })
+  const sortedRoutes = useMemo(() => {
+    return [...routes].sort((a, b) => {
+      switch (sortBy) {
+        case 'time':
+          return a.total_time - b.total_time
+        case 'distance':
+          return a.total_distance - b.total_distance
+        case 'sustainability':
+          return (b.energy_efficiency || 0) - (a.energy_efficiency || 0)
+        case 'cost':
+          return (a.total_sustainability_points || 0) - (b.total_sustainability_points || 0)
+        default:
+          return 0
+      }
+    })
+  }, [routes, sortBy])
 
   if (routes.length === 0) return null
 

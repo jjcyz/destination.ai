@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { GoogleMap, Polyline, Marker, InfoWindow } from '@react-google-maps/api'
 import type { Route } from '../types'
 import { useGoogleMaps } from '../contexts/GoogleMapsContext'
@@ -26,18 +26,18 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
   const [mapLoaded, setMapLoaded] = useState(false)
   const [selectedInfoWindow, setSelectedInfoWindow] = useState<number | null>(null)
 
-  const containerStyle = {
+  const containerStyle = useMemo(() => ({
     width: '100%',
     height: '100%',
     minHeight: '200px'
-  }
+  }), [])
 
   // Vancouver center coordinates
   const vancouverCenter = { lat: 49.2827, lng: -123.1207 }
 
 
   // Decode Google Maps polyline
-  const decodePolyline = (encoded: string): google.maps.LatLng[] => {
+  const decodePolyline = useCallback((encoded: string): google.maps.LatLng[] => {
     if (!encoded || encoded.length === 0) {
       return []
     }
@@ -81,7 +81,115 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
       console.error('Error decoding polyline:', error)
       return []
     }
-  }
+  }, [])
+
+  const mapOptions = useMemo(() => ({
+    zoomControl: true,
+    streetViewControl: false,
+    mapTypeControl: false,
+    fullscreenControl: true,
+    disableDefaultUI: false,
+  }), [])
+
+  const originIcon = useMemo(() => {
+    if (!isGoogleMapsLoaded) return undefined
+
+    return {
+      url: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="#22c55e">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+      `),
+      scaledSize: new google.maps.Size(32, 32),
+      anchor: new google.maps.Point(16, 32),
+    }
+  }, [isGoogleMapsLoaded])
+
+  const destinationIcon = useMemo(() => {
+    if (!isGoogleMapsLoaded) return undefined
+
+    return {
+      url: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="#ef4444">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+      `),
+      scaledSize: new google.maps.Size(32, 32),
+      anchor: new google.maps.Point(16, 32),
+    }
+  }, [isGoogleMapsLoaded])
+
+  const routeRenderData = useMemo(() => {
+    if (!isGoogleMapsLoaded) return []
+
+    return routes.map((route) => {
+      const isSelected = selectedRoute?.id === route.id
+      const routeColor = getRouteColorHex(route.preference as string)
+      const opacity = isSelected ? 0.9 : 0.5
+      const weight = isSelected ? 8 : 4
+
+      const steps = route.steps.map((step, stepIndex) => {
+        let path: google.maps.LatLng[] = []
+
+        if (step.polyline) {
+          path = decodePolyline(step.polyline)
+        }
+
+        if (path.length === 0) {
+          path = [
+            new google.maps.LatLng(step.start_point.lat, step.start_point.lng),
+            new google.maps.LatLng(step.end_point.lat, step.end_point.lng)
+          ]
+        }
+
+        if (path.length === 0) {
+          return null
+        }
+
+        const isWalking = step.mode === 'walking'
+        const isBiking = step.mode === 'biking'
+
+        return {
+          key: `${route.id}-${stepIndex}`,
+          path,
+          options: {
+            strokeColor: routeColor,
+            strokeOpacity: opacity,
+            strokeWeight: weight,
+            geodesic: true,
+            icons: isWalking ? [
+              {
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 3,
+                  strokeColor: routeColor,
+                  strokeWeight: 2,
+                },
+                offset: '0%',
+                repeat: '20px',
+              },
+            ] : isBiking ? [
+              {
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 2,
+                  strokeColor: routeColor,
+                  strokeWeight: 1,
+                },
+                offset: '0%',
+                repeat: '15px',
+              },
+            ] : undefined,
+          }
+        }
+      }).filter(Boolean)
+
+      return {
+        route,
+        steps
+      }
+    })
+  }, [decodePolyline, isGoogleMapsLoaded, routes, selectedRoute])
 
   // Fit map to show all routes
   const fitBounds = useCallback(() => {
@@ -199,33 +307,19 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
         </div>
       )}
 
-      <GoogleMap
+        <GoogleMap
         mapContainerStyle={containerStyle}
         center={vancouverCenter}
         zoom={12}
         onLoad={onLoad}
         onUnmount={onUnmount}
-        options={{
-          zoomControl: true,
-          streetViewControl: false,
-          mapTypeControl: false,
-          fullscreenControl: true,
-          disableDefaultUI: false,
-        }}
+          options={mapOptions}
       >
         {/* Origin Marker */}
         {lastRequest?.origin && (
           <Marker
             position={{ lat: lastRequest.origin.lat, lng: lastRequest.origin.lng }}
-            icon={{
-              url: 'data:image/svg+xml;base64,' + btoa(`
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="#22c55e">
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                </svg>
-              `),
-              scaledSize: new google.maps.Size(32, 32),
-              anchor: new google.maps.Point(16, 32),
-            }}
+            icon={originIcon}
             onClick={() => setSelectedInfoWindow(selectedInfoWindow === 0 ? null : 0)}
           >
             {selectedInfoWindow === 0 && (
@@ -243,15 +337,7 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
         {lastRequest?.destination && (
           <Marker
             position={{ lat: lastRequest.destination.lat, lng: lastRequest.destination.lng }}
-            icon={{
-              url: 'data:image/svg+xml;base64,' + btoa(`
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="#ef4444">
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                </svg>
-              `),
-              scaledSize: new google.maps.Size(32, 32),
-              anchor: new google.maps.Point(16, 32),
-            }}
+            icon={destinationIcon}
             onClick={() => setSelectedInfoWindow(selectedInfoWindow === 1 ? null : 1)}
           >
             {selectedInfoWindow === 1 && (
@@ -266,80 +352,17 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
         )}
 
         {/* Route Polylines */}
-        {routes.map((route: Route) => {
-          const isSelected = selectedRoute?.id === route.id
-          const routeColor = getRouteColorHex(route.preference as string)
-          const opacity = isSelected ? 0.9 : 0.5
-          const weight = isSelected ? 8 : 4
-
-          return (
-            <React.Fragment key={route.id}>
-              {route.steps.map((step, stepIndex: number) => {
-                let path: google.maps.LatLng[] = []
-
-                if (step.polyline) {
-                  // Use decoded polyline for accurate route rendering
-                  path = decodePolyline(step.polyline)
-                }
-
-                // Fallback to start/end points if no polyline or decoding failed
-                if (path.length === 0) {
-                  path = [
-                    new google.maps.LatLng(step.start_point.lat, step.start_point.lng),
-                    new google.maps.LatLng(step.end_point.lat, step.end_point.lng)
-                  ]
-                }
-
-                // Skip if path is still empty
-                if (path.length === 0) {
-                  return null
-                }
-
-                // Determine line style based on mode
-                const isWalking = step.mode === 'walking'
-                const isBiking = step.mode === 'biking'
-                const strokeOpacity = opacity
-                const strokeWeight = weight
-
-                return (
-                  <Polyline
-                    key={`${route.id}-${stepIndex}`}
-                    path={path}
-                    options={{
-                      strokeColor: routeColor,
-                      strokeOpacity,
-                      strokeWeight,
-                      geodesic: true,
-                      icons: isWalking ? [
-                        {
-                          icon: {
-                            path: google.maps.SymbolPath.CIRCLE,
-                            scale: 3,
-                            strokeColor: routeColor,
-                            strokeWeight: 2,
-                          },
-                          offset: '0%',
-                          repeat: '20px',
-                        },
-                      ] : isBiking ? [
-                        {
-                          icon: {
-                            path: google.maps.SymbolPath.CIRCLE,
-                            scale: 2,
-                            strokeColor: routeColor,
-                            strokeWeight: 1,
-                          },
-                          offset: '0%',
-                          repeat: '15px',
-                        },
-                      ] : undefined,
-                    }}
-                  />
-                )
-              })}
-            </React.Fragment>
-          )
-        })}
+        {routeRenderData.map(({ route, steps }) => (
+          <React.Fragment key={route.id}>
+            {steps.map((step) => step && (
+              <Polyline
+                key={step.key}
+                path={step.path}
+                options={step.options}
+              />
+            ))}
+          </React.Fragment>
+        ))}
 
         {/* Legend */}
         {routes.length > 0 && (
@@ -386,5 +409,5 @@ const GoogleMapView: React.FC<GoogleMapViewProps> = ({
   )
 }
 
-export default GoogleMapView
+export default React.memo(GoogleMapView)
 

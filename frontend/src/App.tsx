@@ -1,14 +1,18 @@
+import React, { Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import RoutePlanner from './components/RoutePlanner'
-import Dashboard from './components/Dashboard'
-import Gamification from './components/Gamification'
 import ErrorBoundary from './components/ErrorBoundary'
 import { RouteProvider } from './contexts/RouteContext'
 import { UserProvider } from './contexts/UserContext'
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext'
 
+const Dashboard = lazy(() => import('./components/Dashboard'))
+const Gamification = lazy(() => import('./components/Gamification'))
+
 function App() {
+  const prefersReducedMotion = useReducedMotion()
+
   return (
     <ErrorBoundary>
       <GoogleMapsProvider>
@@ -30,16 +34,24 @@ function App() {
               </div>
 
               <motion.main
-                initial={{ opacity: 0, y: 20 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
+                transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.6, ease: "easeOut" }}
                 className="relative z-10"
               >
-                <Routes>
-                  <Route path="/" element={<RoutePlanner />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/gamification" element={<Gamification />} />
-                </Routes>
+                <Suspense
+                  fallback={(
+                    <div className="flex items-center justify-center min-h-[40vh] text-gray-600">
+                      Loading...
+                    </div>
+                  )}
+                >
+                  <Routes>
+                    <Route path="/" element={<RoutePlanner />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/gamification" element={<Gamification />} />
+                  </Routes>
+                </Suspense>
               </motion.main>
             </div>
             </Router>

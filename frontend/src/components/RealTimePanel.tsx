@@ -61,6 +61,24 @@ interface RealTimePanelProps {
   }>
 }
 
+const MOCK_WEATHER: WeatherData = {
+  condition: 'clear',
+  temperature: 18,
+  humidity: 65,
+  windSpeed: 12,
+  visibility: 15
+}
+
+const MOCK_TRAFFIC: TrafficData = {
+  level: 'moderate',
+  incidents: 3
+}
+
+const MOCK_ROAD_EVENTS = [
+  { type: 'construction' as const, location: 'Granville St Bridge', severity: 'medium' as const },
+  { type: 'closure' as const, location: 'Robson St', severity: 'high' as const }
+]
+
 const RealTimePanel: React.FC<RealTimePanelProps> = ({
   weather,
   traffic,
@@ -69,28 +87,12 @@ const RealTimePanel: React.FC<RealTimePanelProps> = ({
   const { state: routeState } = useRoute()
   const [notifications, setNotifications] = useState<Notification[]>([])
 
-  // Mock data for demo
-  const mockWeather: WeatherData = {
-    condition: 'clear',
-    temperature: 18,
-    humidity: 65,
-    windSpeed: 12,
-    visibility: 15
-  }
-
-  const mockTraffic: TrafficData = {
-    level: 'moderate',
-    incidents: 3
-  }
-
-  const mockRoadEvents = [
-    { type: 'construction' as const, location: 'Granville St Bridge', severity: 'medium' as const },
-    { type: 'closure' as const, location: 'Robson St', severity: 'high' as const }
-  ]
-
-  const currentWeather = weather || mockWeather
-  const currentTraffic = traffic || mockTraffic
-  const currentRoadEvents = roadEvents.length > 0 ? roadEvents : mockRoadEvents
+  const currentWeather = weather || MOCK_WEATHER
+  const currentTraffic = traffic || MOCK_TRAFFIC
+  const currentRoadEvents = useMemo(
+    () => (roadEvents.length > 0 ? roadEvents : MOCK_ROAD_EVENTS),
+    [roadEvents]
+  )
 
   // Mock notifications for demo (including road events as alerts)
   useEffect(() => {
